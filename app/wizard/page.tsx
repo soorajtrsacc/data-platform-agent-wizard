@@ -704,6 +704,63 @@ function Step5({
   );
 }
 
+function McpConnectivityTest({ srv }: { srv: McpServer }) {
+  const [status, setStatus] = useState<"idle" | "testing" | "ok" | "fail" | "info">("idle");
+  const [detail, setDetail] = useState("");
+
+  const test = async () => {
+    setStatus("testing");
+    setDetail("");
+    if (srv.transport === "stdio") {
+      setStatus("info");
+      setDetail(`stdio servers run locally — verify by running:\n${srv.command ?? "?"} ${(srv.args ?? []).join(" ")}`);
+      return;
+    }
+    const url = srv.url ?? "";
+    if (!url || url.includes("${")) {
+      setStatus("info");
+      setDetail("URL contains a variable placeholder — resolve it first, then test.");
+      return;
+    }
+    try {
+      const res = await fetch(url, { method: "GET", signal: AbortSignal.timeout(5000) });
+      if (res.ok || res.status === 405 || res.status === 404) {
+        setStatus("ok");
+        setDetail(`HTTP ${res.status} — server reachable`);
+      } else {
+        setStatus("fail");
+        setDetail(`HTTP ${res.status} — check URL and auth`);
+      }
+    } catch (e) {
+      setStatus("fail");
+      setDetail(`Connection failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        className={`text-xs px-3 py-1 rounded border font-medium transition-colors ${
+          status === "ok" ? "border-green-600 text-green-400 bg-green-950/20" :
+          status === "fail" ? "border-red-600 text-red-400 bg-red-950/20" :
+          status === "info" ? "border-yellow-600 text-yellow-400 bg-yellow-950/20" :
+          status === "testing" ? "border-gray-600 text-gray-400 animate-pulse" :
+          "border-gray-600 text-gray-400 hover:border-blue-500 hover:text-blue-400"
+        }`}
+        onClick={test}
+        disabled={status === "testing"}
+      >
+        {status === "idle" && "Test connectivity"}
+        {status === "testing" && "Testing…"}
+        {status === "ok" && "✓ Connected"}
+        {status === "fail" && "✗ Failed"}
+        {status === "info" && "ℹ stdio"}
+      </button>
+      {detail && <pre className="text-xs text-gray-400 whitespace-pre-wrap">{detail}</pre>}
+    </div>
+  );
+}
+
 function Step6({
   c, setC,
 }: { c: WizardConfig; setC: (fn: (p: WizardConfig) => WizardConfig) => void }) {
@@ -766,9 +823,12 @@ function Step6({
         )}
         {c.mcpServers.map((srv) => (
           <div key={srv.id} className="card space-y-3">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center flex-wrap gap-2">
               <span className="font-medium text-sm">{srv.name || "New MCP Server"}</span>
-              <button className="btn-secondary text-xs" onClick={() => removeServer(srv.id)}>Remove</button>
+              <div className="flex items-center gap-2">
+                <McpConnectivityTest srv={srv} />
+                <button className="btn-secondary text-xs" onClick={() => removeServer(srv.id)}>Remove</button>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
