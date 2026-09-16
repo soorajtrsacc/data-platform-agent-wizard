@@ -1,0 +1,8 @@
+node_modules/
+.next/
+out/
+graphify-out/
+*.log
+.env
+.env.local
+.env.production
