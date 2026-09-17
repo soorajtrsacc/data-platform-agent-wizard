@@ -1118,6 +1118,174 @@ pipelines:
   }
 }
 
+// ─── Core instructions (shared by all agent generators) ──────────────────────
+
+export function generateCoreInstructions(c: WizardConfig): string {
+  const envList = c.environments.map((e) => e.name).join(", ") || "dev, staging, prod";
+
+  const PROVIDER_LABEL: Record<string, string> = {
+    github: "GitHub", gitlab: "GitLab", azuredevops: "Azure DevOps",
+    bitbucket: "Bitbucket", other: "Git",
+  };
+
+  const platformList = c.platforms.length
+    ? c.platforms.map((p) =>
+        `- ${PLATFORM_LABEL[p.platform] ?? p.platform} on ${CLOUD_LABEL[p.cloud] ?? p.cloud}${p.region ? ` (${p.region})` : ""} — ${p.role}`
+      ).join("\n")
+    : "- (no platforms configured)";
+
+  const layerList = c.layers.length
+    ? c.layers.map((l) =>
+        `- **${l.name}**: \`${l.pathTemplate || "—"}\` — ${l.description || "no description"}`
+      ).join("\n")
+    : "- (no layers defined)";
+
+  const sourceList = c.sources.length
+    ? c.sources.map((s) =>
+        `- **${s.name}** (${s.platform}) — ${s.isLegacy ? "legacy migration source" : "modern integration"}`
+      ).join("\n")
+    : "- (no sources defined)";
+
+  const repoList = (c.repos ?? []).filter((r) => r.url).map((r) =>
+    `- **${PROVIDER_LABEL[r.provider] ?? r.provider}**${r.name ? ` (${r.name})` : ""}: \`${r.url}\` · branch: \`${r.branch || "main"}\``
+  ).join("\n") || "- (not configured)";
+
+  const primaryRepo = (c.repos ?? []).find((r) => r.url);
+  const repoDir = primaryRepo?.url.split("/").pop()?.replace(/\.git$/, "") ?? "repo";
+  const branch = primaryRepo?.branch || "main";
+  const repoWorkflow = primaryRepo
+    ? `
+### Repository Workflow
+
+Before making any code change, run:
+\`\`\`bash
+# Clone if not already present
+ls ${repoDir} 2>/dev/null || git clone ${primaryRepo.url}
+cd ${repoDir}
+git fetch origin
+git checkout ${branch}
+git pull origin ${branch}
+\`\`\`
+
+After completing changes:
+\`\`\`bash
+git add -A
+git commit -m "<describe what changed>"
+git push origin ${branch}
+\`\`\`
+`
+    : "";
+
+  const mcpSection =
+    c.mcpServers.length > 0
+      ? `
+## MCP Server Connections
+
+> MCP servers are natively supported by Claude Code. For other agents, use the following connection details manually:
+
+${c.mcpServers
+  .map((s) => {
+    if (s.transport === "stdio") {
+      const args = (s.args ?? []).join(" ");
+      return `- **${s.name}**: \`${s.command ?? "?"} ${args}\` (stdio)${s.description ? ` — ${s.description}` : ""}`;
+    }
+    return `- **${s.name}**: \`${s.url ?? "?"}\` (${s.transport})${s.description ? ` — ${s.description}` : ""}`;
+  })
+  .join("\n")}
+`
+      : "";
+
+  const deploySection = c.deploymentNotes ? `\n## Deployment\n${c.deploymentNotes}\n` : "";
+  const designSection = c.designNotes ? `\n## Design Decisions\n${c.designNotes}\n` : "";
+
+  return `## Project: ${c.projectName || "Pipeline Agent"}
+
+${c.architectureNotes ? `### Architecture\n${c.architectureNotes}\n` : ""}## Stack & Environments
+
+**Environments:** ${envList}
+
+### Platforms
+${platformList}
+
+## Data Layers
+
+${layerList}
+
+## Source Systems
+
+${sourceList}
+
+## Code Repositories
+
+${repoList}
+${repoWorkflow}${mcpSection}
+## Coding Standards
+
+${c.codeStandardsNotes || "Follow the engine-specific rules and standard SQL/Python coding standards."}
+${deploySection}${designSection}`;
+}
+
+// ─── Agent-specific generators ────────────────────────────────────────────────
+
+export function generateCursorRules(c: WizardConfig): string {
+  return `---
+description: ${c.projectName || "Pipeline project"} — project context and coding standards
+globs: ""
+alwaysApply: true
+---
+
+${generateCoreInstructions(c)}
+`;
+}
+
+export function generateCopilotInstructions(c: WizardConfig): string {
+  return `# GitHub Copilot Instructions — ${c.projectName || "Pipeline Agent"}
+
+${generateCoreInstructions(c)}
+`;
+}
+
+export function generateWindsurfRules(c: WizardConfig): string {
+  return `# Windsurf Rules — ${c.projectName || "Pipeline Agent"}
+
+${generateCoreInstructions(c)}
+`;
+}
+
+export function generateCodexAgents(c: WizardConfig): string {
+  return `# AGENTS — ${c.projectName || "Pipeline Agent"}
+
+${generateCoreInstructions(c)}
+`;
+}
+
+export function generateAiderConventions(c: WizardConfig): [string, string] {
+  const conventions = `# Conventions — ${c.projectName || "Pipeline Agent"}
+
+${generateCoreInstructions(c)}
+`;
+  const aiderConf = `model: gpt-4o\nread: CONVENTIONS.md`;
+  return [conventions, aiderConf];
+}
+
+export function generateClineRules(c: WizardConfig): string {
+  return `# Cline Rules — ${c.projectName || "Pipeline Agent"}
+
+${generateCoreInstructions(c)}
+`;
+}
+
+export function generateContinueConfig(c: WizardConfig): string {
+  return JSON.stringify(
+    {
+      systemMessage: generateCoreInstructions(c),
+      models: [],
+    },
+    null,
+    2
+  );
+}
+
 // ─── Repository policy rule file ─────────────────────────────────────────────
 
 export function generateRepoPolicyRules(c: WizardConfig): string {

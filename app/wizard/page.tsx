@@ -79,6 +79,28 @@ const REPO_PROVIDER_OPTIONS = [
   { value: "other",       label: "Other Git" },
 ];
 
+const AGENT_OPTIONS = [
+  { value: "claude-code", label: "Claude Code",    note: "Anthropic" },
+  { value: "cursor",      label: "Cursor",          note: "Anysphere" },
+  { value: "copilot",     label: "GitHub Copilot",  note: "Microsoft" },
+  { value: "windsurf",    label: "Windsurf",        note: "Codeium" },
+  { value: "codex",       label: "Codex CLI",       note: "OpenAI" },
+  { value: "aider",       label: "Aider",           note: "Open Source" },
+  { value: "cline",       label: "Cline",           note: "Open Source" },
+  { value: "continue",    label: "Continue.dev",    note: "Open Source" },
+];
+
+const AGENT_LAUNCH: Record<string, string> = {
+  "claude-code": "claude",
+  cursor:        "cursor .",
+  copilot:       "code .  # VS Code with Copilot",
+  windsurf:      "windsurf .",
+  codex:         "codex",
+  aider:         "aider",
+  cline:         "code .  # VS Code with Cline extension",
+  continue:      "code .  # VS Code with Continue extension",
+};
+
 const MCP_PRESETS: Partial<McpServer>[] = [
   {
     name: "bigquery",
@@ -194,6 +216,7 @@ function emptyConfig(): WizardConfig {
     codeStandardsNotes: "",
     documents: [],
     sectionDocs: {},
+    agents: ["claude-code"],
   };
 }
 
@@ -370,6 +393,37 @@ function Step1({
         <textarea className="input min-h-[120px]" placeholder="e.g. Medallion architecture on Palantir Foundry + BigQuery. Raw data ingested from Kafka topics…"
           value={c.architectureNotes}
           onChange={(e) => setC((p) => ({ ...p, architectureNotes: e.target.value }))} />
+      </div>
+
+      <div>
+        <label className="label">AI Coding Agent(s)
+          <span className="text-gray-500 font-normal ml-2">— select all agents you want to configure</span>
+        </label>
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          {AGENT_OPTIONS.map((opt) => {
+            const checked = (c.agents ?? []).includes(opt.value);
+            return (
+              <label key={opt.value} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
+                checked ? "border-blue-500 bg-blue-950/30" : "border-gray-700 hover:border-gray-500"
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => {
+                    const current = c.agents ?? [];
+                    if (e.target.checked) {
+                      setC((p) => ({ ...p, agents: [...current, opt.value] }));
+                    } else {
+                      setC((p) => ({ ...p, agents: current.filter((a) => a !== opt.value) }));
+                    }
+                  }}
+                />
+                <span className="text-sm font-medium">{opt.label}</span>
+                <span className="text-xs text-gray-500 ml-auto">{opt.note}</span>
+              </label>
+            );
+          })}
+        </div>
       </div>
 
       <div>
@@ -863,6 +917,8 @@ function Step6({
         s.id === id ? { ...s, envVars: s.envVars.filter((_, i) => i !== idx) } : s),
     }));
 
+  const nonClaudeAgents = (c.agents ?? []).filter((a) => a !== "claude-code");
+
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Step 6 — MCP Server Connections</h2>
@@ -870,6 +926,17 @@ function Step6({
         Configure MCP (Model Context Protocol) servers so Claude Code can securely connect to your cloud environments,
         databases, and orchestration tools at runtime.
       </p>
+
+      {nonClaudeAgents.length > 0 && (
+        <div className="card bg-blue-950/20 border border-blue-700/50">
+          <p className="text-sm text-blue-300 font-medium mb-1">MCP compatibility note</p>
+          <p className="text-xs text-gray-300">
+            MCP servers are natively supported only by <strong>Claude Code</strong>.
+            For <strong>{nonClaudeAgents.map((a) => AGENT_OPTIONS.find((o) => o.value === a)?.label ?? a).join(", ")}</strong>,
+            MCP connection details will be included as manual setup notes in their instruction files.
+          </p>
+        </div>
+      )}
 
       <div>
         <label className="label mb-2">Quick-add presets</label>
@@ -1120,6 +1187,12 @@ function Step7({
         <h3 className="font-semibold mb-3">Bundle Summary</h3>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="text-gray-400">Project</div><div>{c.projectName || "—"}</div>
+          <div className="text-gray-400">Agents</div>
+          <div>
+            {(c.agents ?? []).length > 0
+              ? (c.agents ?? []).map((a) => AGENT_OPTIONS.find((o) => o.value === a)?.label ?? a).join(", ")
+              : "Claude Code (default)"}
+          </div>
           <div className="text-gray-400">Environments</div><div>{c.environments.map((e) => e.name).join(", ") || "—"}</div>
           <div className="text-gray-400">Platforms</div><div>{c.platforms.length} platform(s)</div>
           <div className="text-gray-400">Data Layers</div><div>{c.layers.length} layer(s)</div>
@@ -1137,7 +1210,7 @@ function Step7({
       </div>
 
       <button className="btn-primary w-full text-lg py-3" onClick={onExport}>
-        Download Claude Code Workspace Bundle (.zip)
+        Download Agent Workspace Bundle (.zip)
       </button>
     </div>
   );
@@ -1159,6 +1232,8 @@ function Step8({ c }: { c: WizardConfig }) {
   const primaryPlatform = c.platforms[0]?.platform ?? "bigquery";
   const hasMcp = c.mcpServers.length > 0;
   const hasLegacy = c.sources.some((s) => s.isLegacy);
+  const selectedAgents = (c.agents ?? []).length > 0 ? c.agents : ["claude-code"];
+  const isClaudeCode = selectedAgents.includes("claude-code");
 
   const cliSetup: { label: string; cmd: string }[] = [];
   for (const p of c.platforms) {
@@ -1182,9 +1257,9 @@ function Step8({ c }: { c: WizardConfig }) {
       code: `# macOS / Linux\nunzip ${zipName} -d ./${c.projectName || "pipeline-agent"}-workspace\n\n# Windows (PowerShell)\nExpand-Archive -Path ${zipName} -DestinationPath .\\${c.projectName || "pipeline-agent"}-workspace`,
     },
     {
-      title: "2. Open Claude Code in the workspace",
-      desc: "Navigate into the extracted folder and launch Claude Code. CLAUDE.md and all rule files are automatically loaded.",
-      code: `cd ${c.projectName || "pipeline-agent"}-workspace\nclaude`,
+      title: "2. Open your AI coding agent in the workspace",
+      desc: "Navigate into the extracted folder and launch your configured agent(s). Instruction files are automatically loaded.",
+      code: `cd ${c.projectName || "pipeline-agent"}-workspace\n\n# Launch your agent:\n${selectedAgents.map((a) => `${AGENT_LAUNCH[a] ?? a}  # ${AGENT_OPTIONS.find((o) => o.value === a)?.label ?? a}`).join("\n")}`,
     },
     ...(uniqueCli.length > 0
       ? [
@@ -1197,7 +1272,7 @@ function Step8({ c }: { c: WizardConfig }) {
           },
         ]
       : []),
-    ...(hasMcp
+    ...(hasMcp && isClaudeCode
       ? [
           {
             title: `${uniqueCli.length > 0 ? "4" : "3"}. Verify MCP server connections`,
@@ -1220,18 +1295,25 @@ function Step8({ c }: { c: WizardConfig }) {
     },
     {
       title: "What's inside your ZIP",
-      desc: "Every file Claude Code needs is pre-configured:",
+      desc: "Every file your configured agent(s) need is pre-generated:",
       code: [
-        "CLAUDE.md               ← Master instruction file (auto-loaded)",
-        ".claude/settings.json  ← Allowed tools & dialect routing",
-        ".claude/hooks/         ← Pre-bash validator, post-write linter",
-        ".claude/rules/         ← Engine rules, orchestration, context graph",
-        (c.repos ?? []).some((r) => r.url) ? ".claude/rules/repo-policy.md ← Mandatory repo clone/commit/push policy" : null,
-        hasMcp ? ".claude/mcp_config.json ← MCP server connections" : null,
+        isClaudeCode ? "CLAUDE.md               ← Master instruction file (auto-loaded)" : null,
+        isClaudeCode ? ".claude/settings.json  ← Allowed tools & dialect routing" : null,
+        isClaudeCode ? ".claude/hooks/         ← Pre-bash validator, post-write linter" : null,
+        isClaudeCode ? ".claude/rules/         ← Engine rules, orchestration, context graph" : null,
+        isClaudeCode && (c.repos ?? []).some((r) => r.url) ? ".claude/rules/repo-policy.md ← Mandatory repo clone/commit/push policy" : null,
+        isClaudeCode && hasMcp ? ".claude/mcp_config.json ← MCP server connections" : null,
+        selectedAgents.includes("cursor") ? ".cursor/rules/project-context.mdc  ← Cursor project context (alwaysApply)" : null,
+        selectedAgents.includes("copilot") ? ".github/copilot-instructions.md    ← GitHub Copilot instructions" : null,
+        selectedAgents.includes("windsurf") ? ".windsurfrules                     ← Windsurf rules" : null,
+        selectedAgents.includes("codex") ? "AGENTS.md                          ← OpenAI Codex CLI agents file" : null,
+        selectedAgents.includes("aider") ? "CONVENTIONS.md + .aider.conf.yml   ← Aider conventions & config" : null,
+        selectedAgents.includes("cline") ? ".clinerules                         ← Cline rules" : null,
+        selectedAgents.includes("continue") ? ".continue/config.json              ← Continue.dev configuration" : null,
         c.cicd && CICD_FILE_MAP[c.cicd] ? `${CICD_FILE_MAP[c.cicd]}  ← ${CICD_OPTIONS.find((o) => o.value === c.cicd)?.label ?? c.cicd} pipeline` : null,
         "docs/mapping_contract.json  ← Source-to-target column mapping",
         "docs/architecture_spec.md   ← Architecture reference",
-        "docs/context_graph.json     ← Graph-RAG index (CONTEXT command)",
+        "docs/context_graph.json     ← Graph-RAG index",
         c.documents.length > 0 || Object.keys(c.sectionDocs ?? {}).length > 0
           ? "docs/attachments/ & docs/sections/  ← Your reference documents"
           : null,
@@ -1244,9 +1326,9 @@ function Step8({ c }: { c: WizardConfig }) {
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-1">Step 8 — Launch &amp; Run in Claude Code</h2>
+      <h2 className="text-xl font-bold mb-1">Step 8 — Launch &amp; Run</h2>
       <p className="text-gray-400 text-sm mb-6">
-        Your workspace bundle is ready. Follow these steps to activate it in Claude Code.
+        Your workspace bundle is ready. Follow these steps to activate it in your AI coding agent.
       </p>
 
       <div className="space-y-5">
@@ -1263,27 +1345,34 @@ function Step8({ c }: { c: WizardConfig }) {
         ))}
       </div>
 
-      <div className="mt-6 p-4 rounded-lg bg-blue-950 border border-blue-700 text-sm">
-        <p className="font-semibold text-blue-300 mb-1">Pro tip — Context Graph</p>
-        <p className="text-gray-300 text-xs">
-          When the full CLAUDE.md is too large for a single prompt, use{" "}
-          <code className="bg-gray-800 px-1 rounded">CONTEXT &lt;query&gt;</code> inside Claude Code to load only the
-          relevant slice. Example: <code className="bg-gray-800 px-1 rounded">CONTEXT silver layer {primaryPlatform}</code>
-        </p>
-      </div>
+      {isClaudeCode && (
+        <div className="mt-6 p-4 rounded-lg bg-blue-950 border border-blue-700 text-sm">
+          <p className="font-semibold text-blue-300 mb-1">Pro tip — Context Graph</p>
+          <p className="text-gray-300 text-xs">
+            When the full CLAUDE.md is too large for a single prompt, use{" "}
+            <code className="bg-gray-800 px-1 rounded">CONTEXT &lt;query&gt;</code> inside Claude Code to load only the
+            relevant slice. Example: <code className="bg-gray-800 px-1 rounded">CONTEXT silver layer {primaryPlatform}</code>
+          </p>
+        </div>
+      )}
 
       <div className="mt-4 p-4 rounded-lg bg-gray-800 border border-gray-600 text-xs text-gray-400">
         <p>
-          Need help? Run <code className="bg-gray-900 px-1 rounded">/help</code> inside Claude Code, or visit{" "}
-          <a
-            href="https://docs.anthropic.com/claude-code"
-            target="_blank"
-            rel="noreferrer"
-            className="text-blue-400 underline"
-          >
-            docs.anthropic.com/claude-code
-          </a>
-          .
+          {isClaudeCode && (
+            <>
+              Need help with Claude Code? Run <code className="bg-gray-900 px-1 rounded">/help</code> inside Claude Code, or visit{" "}
+              <a
+                href="https://docs.anthropic.com/claude-code"
+                target="_blank"
+                rel="noreferrer"
+                className="text-blue-400 underline"
+              >
+                docs.anthropic.com/claude-code
+              </a>
+              .
+            </>
+          )}
+          {!isClaudeCode && "Open the extracted folder in your agent and the instruction files will be auto-detected."}
         </p>
       </div>
     </div>
@@ -1342,7 +1431,7 @@ export default function WizardPage() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold">Pipeline Coding Agent</h1>
           <p className="text-gray-400 text-sm mt-1">
-            Multi-Engine, Cloud-Agnostic Data Pipeline Agent for Claude Code
+            Multi-Engine, Cloud-Agnostic Data Pipeline Agent Workspace — supports Claude Code, Cursor, Copilot &amp; more
           </p>
         </div>
 
