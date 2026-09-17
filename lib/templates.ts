@@ -36,6 +36,244 @@ const dialectFor = (platform: string): string => {
   return "snowflake";
 };
 
+// ─── Official documentation references ───────────────────────────────────────
+
+const PLATFORM_DOCS: Record<string, { label: string; links: { title: string; url: string }[] }> = {
+  bigquery: {
+    label: "BigQuery (GoogleSQL)",
+    links: [
+      { title: "Standard SQL query syntax", url: "https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax" },
+      { title: "SAFE_CAST & type functions", url: "https://cloud.google.com/bigquery/docs/reference/standard-sql/functions-and-operators#safe_casting" },
+      { title: "DML statements", url: "https://cloud.google.com/bigquery/docs/reference/standard-sql/dml-syntax" },
+      { title: "Partitioning & clustering", url: "https://cloud.google.com/bigquery/docs/partitioned-tables" },
+      { title: "Performance best practices", url: "https://cloud.google.com/bigquery/docs/best-practices-performance-overview" },
+      { title: "dbt-bigquery adapter", url: "https://docs.getdbt.com/docs/core/connect-data-platform/bigquery-setup" },
+    ],
+  },
+  snowflake: {
+    label: "Snowflake",
+    links: [
+      { title: "SQL command reference", url: "https://docs.snowflake.com/en/sql-reference" },
+      { title: "QUALIFY clause", url: "https://docs.snowflake.com/en/sql-reference/constructs/qualify" },
+      { title: "Window functions", url: "https://docs.snowflake.com/en/sql-reference/functions-window" },
+      { title: "Streams & tasks", url: "https://docs.snowflake.com/en/user-guide/streams-intro" },
+      { title: "Query performance", url: "https://docs.snowflake.com/en/user-guide/sql-perf" },
+      { title: "dbt-snowflake adapter", url: "https://docs.getdbt.com/docs/core/connect-data-platform/snowflake-setup" },
+    ],
+  },
+  databricks: {
+    label: "Databricks (Spark SQL / PySpark)",
+    links: [
+      { title: "SQL language manual", url: "https://docs.databricks.com/en/sql/language-manual/index.html" },
+      { title: "Unity Catalog", url: "https://docs.databricks.com/en/data-governance/unity-catalog/index.html" },
+      { title: "Delta Lake guide", url: "https://docs.delta.io/latest/index.html" },
+      { title: "PySpark SQL API", url: "https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/index.html" },
+      { title: "OPTIMIZE & ZORDER", url: "https://docs.databricks.com/en/delta/optimize.html" },
+      { title: "dbt-databricks adapter", url: "https://docs.getdbt.com/docs/core/connect-data-platform/databricks-setup" },
+    ],
+  },
+  palantir: {
+    label: "Palantir Foundry",
+    links: [
+      { title: "Transforms Python overview", url: "https://www.palantir.com/docs/foundry/transforms-python/overview/" },
+      { title: "@transform decorator", url: "https://www.palantir.com/docs/foundry/transforms-python/transforms-reference/" },
+      { title: "@incremental transform", url: "https://www.palantir.com/docs/foundry/transforms-python/incremental-transforms/" },
+      { title: "Polars integration", url: "https://www.palantir.com/docs/foundry/transforms-python/polars/" },
+      { title: "Contour / Slate", url: "https://www.palantir.com/docs/foundry/contour/overview/" },
+    ],
+  },
+  redshift: {
+    label: "Amazon Redshift",
+    links: [
+      { title: "SQL commands reference", url: "https://docs.aws.amazon.com/redshift/latest/dg/r_SQL_commands.html" },
+      { title: "Window functions", url: "https://docs.aws.amazon.com/redshift/latest/dg/r_Window_function_synopsis.html" },
+      { title: "Distribution & sort keys", url: "https://docs.aws.amazon.com/redshift/latest/dg/c_best-practices-best-dist-key.html" },
+      { title: "Performance tuning", url: "https://docs.aws.amazon.com/redshift/latest/dg/c-optimizing-query-performance.html" },
+      { title: "dbt-redshift adapter", url: "https://docs.getdbt.com/docs/core/connect-data-platform/redshift-setup" },
+    ],
+  },
+  synapse: {
+    label: "Azure Synapse Analytics (T-SQL)",
+    links: [
+      { title: "T-SQL language reference", url: "https://learn.microsoft.com/en-us/sql/t-sql/language-reference" },
+      { title: "Synapse SQL pool", url: "https://learn.microsoft.com/en-us/azure/synapse-analytics/sql/overview-architecture" },
+      { title: "Distribution strategies", url: "https://learn.microsoft.com/en-us/azure/synapse-analytics/sql-data-warehouse/sql-data-warehouse-tables-distribute" },
+      { title: "Performance best practices", url: "https://learn.microsoft.com/en-us/azure/synapse-analytics/sql/best-practices-dedicated-sql-pool" },
+      { title: "dbt-synapse adapter", url: "https://docs.getdbt.com/docs/core/connect-data-platform/azuresynapse-setup" },
+    ],
+  },
+  fabric: {
+    label: "Microsoft Fabric",
+    links: [
+      { title: "Fabric Lakehouse overview", url: "https://learn.microsoft.com/en-us/fabric/data-engineering/lakehouse-overview" },
+      { title: "Fabric Warehouse SQL", url: "https://learn.microsoft.com/en-us/fabric/data-warehouse/sql-query-editor" },
+      { title: "Delta Lake in Fabric", url: "https://learn.microsoft.com/en-us/fabric/data-engineering/lakehouse-and-delta-tables" },
+      { title: "Spark in Fabric", url: "https://learn.microsoft.com/en-us/fabric/data-engineering/spark-compute" },
+    ],
+  },
+  dbt: {
+    label: "dbt Core",
+    links: [
+      { title: "dbt introduction", url: "https://docs.getdbt.com/docs/introduction" },
+      { title: "Model configurations", url: "https://docs.getdbt.com/reference/model-configs" },
+      { title: "Jinja & macros", url: "https://docs.getdbt.com/docs/build/jinja-macros" },
+      { title: "Sources", url: "https://docs.getdbt.com/docs/build/sources" },
+      { title: "Tests", url: "https://docs.getdbt.com/docs/build/data-tests" },
+      { title: "Incremental models", url: "https://docs.getdbt.com/docs/build/incremental-models" },
+    ],
+  },
+  pyspark: {
+    label: "PySpark",
+    links: [
+      { title: "PySpark SQL API reference", url: "https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/index.html" },
+      { title: "DataFrame guide", url: "https://spark.apache.org/docs/latest/sql-programming-guide.html" },
+      { title: "Structured Streaming", url: "https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html" },
+      { title: "Performance tuning", url: "https://spark.apache.org/docs/latest/sql-performance-tuning.html" },
+    ],
+  },
+  teradata: {
+    label: "Teradata (BTEQ)",
+    links: [
+      { title: "BTEQ reference", url: "https://docs.teradata.com/r/Teradata-Tools-and-Utilities-BTEQ-Reference" },
+      { title: "SQL functions", url: "https://docs.teradata.com/r/Teradata-Database-SQL-Functions-Operators-Expressions-and-Predicates" },
+      { title: "Migration to BigQuery guide", url: "https://cloud.google.com/bigquery/docs/migration/teradata" },
+    ],
+  },
+  oracle: {
+    label: "Oracle (PL/SQL)",
+    links: [
+      { title: "PL/SQL language reference", url: "https://docs.oracle.com/en/database/oracle/oracle-database/21/lnpls/" },
+      { title: "SQL functions", url: "https://docs.oracle.com/en/database/oracle/oracle-database/21/sqlrf/Functions.html" },
+      { title: "Migration to BigQuery guide", url: "https://cloud.google.com/bigquery/docs/migration/oracle" },
+    ],
+  },
+  sqlserver: {
+    label: "SQL Server (T-SQL)",
+    links: [
+      { title: "T-SQL reference", url: "https://learn.microsoft.com/en-us/sql/t-sql/language-reference" },
+      { title: "Built-in functions", url: "https://learn.microsoft.com/en-us/sql/t-sql/functions/functions" },
+      { title: "Query performance", url: "https://learn.microsoft.com/en-us/sql/relational-databases/performance/performance-monitoring-and-tuning-tools" },
+    ],
+  },
+  postgres: {
+    label: "PostgreSQL",
+    links: [
+      { title: "SQL commands", url: "https://www.postgresql.org/docs/current/sql-commands.html" },
+      { title: "Functions & operators", url: "https://www.postgresql.org/docs/current/functions.html" },
+      { title: "Performance tips", url: "https://www.postgresql.org/docs/current/performance-tips.html" },
+    ],
+  },
+};
+
+const ORCHESTRATION_DOCS: Record<string, { label: string; links: { title: string; url: string }[] }> = {
+  airflow: {
+    label: "Apache Airflow",
+    links: [
+      { title: "Airflow documentation", url: "https://airflow.apache.org/docs/apache-airflow/stable/index.html" },
+      { title: "TaskFlow API", url: "https://airflow.apache.org/docs/apache-airflow/stable/tutorial/taskflow.html" },
+      { title: "DAG best practices", url: "https://airflow.apache.org/docs/apache-airflow/stable/best-practices.html" },
+      { title: "Operators reference", url: "https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/operators.html" },
+    ],
+  },
+  prefect: {
+    label: "Prefect",
+    links: [
+      { title: "Prefect docs", url: "https://docs.prefect.io/" },
+      { title: "Flows & tasks", url: "https://docs.prefect.io/latest/concepts/flows/" },
+      { title: "Deployments", url: "https://docs.prefect.io/latest/concepts/deployments/" },
+    ],
+  },
+  dagster: {
+    label: "Dagster",
+    links: [
+      { title: "Dagster docs", url: "https://docs.dagster.io/" },
+      { title: "Software-defined assets", url: "https://docs.dagster.io/concepts/assets/software-defined-assets" },
+      { title: "dbt + Dagster", url: "https://docs.dagster.io/integrations/dbt" },
+    ],
+  },
+  "dbt-cloud": {
+    label: "dbt Cloud",
+    links: [
+      { title: "dbt Cloud docs", url: "https://docs.getdbt.com/docs/cloud/about-cloud/dbt-cloud-features" },
+      { title: "Jobs & scheduling", url: "https://docs.getdbt.com/docs/deploy/jobs" },
+      { title: "CI/CD in dbt Cloud", url: "https://docs.getdbt.com/docs/deploy/continuous-integration" },
+    ],
+  },
+  "control-m": {
+    label: "Control-M",
+    links: [
+      { title: "Control-M documentation", url: "https://documents.bmc.com/supportu/controlm-saas/en-US/documentation/index.htm" },
+      { title: "Workload Automation", url: "https://www.bmc.com/it-solutions/control-m.html" },
+    ],
+  },
+  autosys: {
+    label: "AutoSys",
+    links: [
+      { title: "AutoSys Workload Automation", url: "https://techdocs.broadcom.com/us/en/ca-enterprise-software/intelligent-automation/autosys-workload-automation/12-0.html" },
+    ],
+  },
+  "palantir-schedules": {
+    label: "Palantir Schedules",
+    links: [
+      { title: "Foundry schedules", url: "https://www.palantir.com/docs/foundry/transforms-python/scheduling/" },
+    ],
+  },
+};
+
+const CICD_DOCS: Record<string, { label: string; links: { title: string; url: string }[] }> = {
+  "github-actions": {
+    label: "GitHub Actions",
+    links: [
+      { title: "Workflow syntax", url: "https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions" },
+      { title: "Contexts & expressions", url: "https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/contexts" },
+      { title: "Secrets management", url: "https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions" },
+      { title: "dbt + GitHub Actions", url: "https://docs.getdbt.com/guides/github-actions" },
+    ],
+  },
+  "azure-pipelines": {
+    label: "Azure DevOps Pipelines",
+    links: [
+      { title: "YAML schema reference", url: "https://learn.microsoft.com/en-us/azure/devops/pipelines/yaml-schema/" },
+      { title: "Pipeline variables", url: "https://learn.microsoft.com/en-us/azure/devops/pipelines/process/variables" },
+      { title: "Service connections", url: "https://learn.microsoft.com/en-us/azure/devops/pipelines/library/service-endpoints" },
+    ],
+  },
+  jenkins: {
+    label: "Jenkins",
+    links: [
+      { title: "Pipeline syntax", url: "https://www.jenkins.io/doc/book/pipeline/syntax/" },
+      { title: "Declarative pipeline", url: "https://www.jenkins.io/doc/book/pipeline/getting-started/#defining-a-pipeline-in-scm" },
+      { title: "Shared libraries", url: "https://www.jenkins.io/doc/book/pipeline/shared-libraries/" },
+    ],
+  },
+  "gitlab-ci": {
+    label: "GitLab CI/CD",
+    links: [
+      { title: "CI/CD YAML reference", url: "https://docs.gitlab.com/ee/ci/yaml/" },
+      { title: "Variables", url: "https://docs.gitlab.com/ee/ci/variables/" },
+      { title: "Pipeline optimization", url: "https://docs.gitlab.com/ee/ci/pipelines/pipeline_efficiency.html" },
+    ],
+  },
+  bamboo: {
+    label: "Atlassian Bamboo",
+    links: [
+      { title: "Bamboo documentation", url: "https://confluence.atlassian.com/bamboo/bamboo-documentation-289276785.html" },
+      { title: "YAML specs", url: "https://docs.atlassian.com/bamboo-specs-docs/latest/index.html" },
+    ],
+  },
+  "bitbucket-pipelines": {
+    label: "Bitbucket Pipelines",
+    links: [
+      { title: "Configure pipelines", url: "https://support.atlassian.com/bitbucket-cloud/docs/configure-bitbucket-pipelinesyml/" },
+      { title: "YAML reference", url: "https://support.atlassian.com/bitbucket-cloud/docs/bitbucket-pipelines-configuration-reference/" },
+    ],
+  },
+};
+
+function renderDocLinks(links: { title: string; url: string }[]): string {
+  return links.map(l => `- [${l.title}](${l.url})`).join("\n");
+}
+
 // ─── CLAUDE.md ────────────────────────────────────────────────────────────────
 
 export function generateClaudeMd(c: WizardConfig): string {
@@ -717,6 +955,46 @@ ${c.layers.map((l, i) => `${i + 1}. ${l.name}_ingest → ${l.name}_transform →
 ## Environment Promotion
 - All DAGs accept an \`env\` parameter (\`${c.environments.map((e) => e.name).join(" | ")}\`).
 - Use the \`env\` parameter to resolve layer paths (substitute \`{env}\` placeholders).
+`;
+}
+
+// ─── Doc references rule file ─────────────────────────────────────────────────
+
+export function generateDocReferencesRules(c: WizardConfig): string {
+  const sections: string[] = [];
+
+  // Platform docs
+  const seenPlatforms = new Set<string>();
+  for (const p of c.platforms) {
+    if (!seenPlatforms.has(p.platform) && PLATFORM_DOCS[p.platform]) {
+      const d = PLATFORM_DOCS[p.platform];
+      sections.push(`## ${d.label}\n\n${renderDocLinks(d.links)}`);
+      seenPlatforms.add(p.platform);
+    }
+  }
+  // Always include dbt docs
+  if (!seenPlatforms.has("dbt") && PLATFORM_DOCS["dbt"]) {
+    const d = PLATFORM_DOCS["dbt"];
+    sections.push(`## ${d.label}\n\n${renderDocLinks(d.links)}`);
+  }
+
+  // Orchestration docs
+  if (c.scheduler && ORCHESTRATION_DOCS[c.scheduler]) {
+    const d = ORCHESTRATION_DOCS[c.scheduler];
+    sections.push(`## ${d.label}\n\n${renderDocLinks(d.links)}`);
+  }
+
+  // CI/CD docs
+  if (c.cicd && CICD_DOCS[c.cicd]) {
+    const d = CICD_DOCS[c.cicd];
+    sections.push(`## ${d.label}\n\n${renderDocLinks(d.links)}`);
+  }
+
+  return `# Official Documentation References
+
+Reference these official docs when needed — do not rely on memory for syntax or API details.
+
+${sections.join("\n\n")}
 `;
 }
 

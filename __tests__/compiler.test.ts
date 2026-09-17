@@ -376,3 +376,26 @@ describe("generateSettingsJson — dialect routing", () => {
     expect(postHook).toContain("--dialect tsql");
   });
 });
+
+// ─── Doc references ───────────────────────────────────────────────────────────
+
+describe("compileWorkspace — doc references", () => {
+  it("emits .claude/rules/doc-references.md with platform docs", () => {
+    const files = compileWorkspace(baseConfig());
+    const docRefs = files[".claude/rules/doc-references.md"];
+    expect(docRefs).toBeDefined();
+    expect(docRefs).toContain("cloud.google.com/bigquery");
+    expect(docRefs).toContain("docs.getdbt.com");
+    expect(docRefs).toContain("docs.github.com");
+  });
+
+  it("includes orchestration docs when scheduler is set", () => {
+    const files = compileWorkspace(baseConfig({ scheduler: "airflow" }));
+    expect(files[".claude/rules/doc-references.md"]).toContain("airflow.apache.org");
+  });
+
+  it("includes bigquery docs in doc-references when bigquery is a platform", () => {
+    const files = compileWorkspace(baseConfig());
+    expect(files[".claude/rules/doc-references.md"]).toContain("cloud.google.com/bigquery/docs/reference/standard-sql");
+  });
+});

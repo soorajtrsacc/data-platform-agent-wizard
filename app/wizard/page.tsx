@@ -1301,6 +1301,7 @@ function Step8({ c }: { c: WizardConfig }) {
         isClaudeCode ? ".claude/settings.json  ← Allowed tools & dialect routing" : null,
         isClaudeCode ? ".claude/hooks/         ← Pre-bash validator, post-write linter" : null,
         isClaudeCode ? ".claude/rules/         ← Engine rules, orchestration, context graph" : null,
+        isClaudeCode ? ".claude/rules/doc-references.md     ← Official docs for all platforms & tools" : null,
         isClaudeCode && (c.repos ?? []).some((r) => r.url) ? ".claude/rules/repo-policy.md ← Mandatory repo clone/commit/push policy" : null,
         isClaudeCode && hasMcp ? ".claude/mcp_config.json ← MCP server connections" : null,
         selectedAgents.includes("cursor") ? ".cursor/rules/project-context.mdc  ← Cursor project context (alwaysApply)" : null,

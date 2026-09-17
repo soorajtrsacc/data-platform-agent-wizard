@@ -12,6 +12,7 @@ import {
   generateMcpConfig,
   generateCicdTemplate,
   generateRepoPolicyRules,
+  generateDocReferencesRules,
   generateCursorRules,
   generateCopilotInstructions,
   generateWindsurfRules,
@@ -178,6 +179,9 @@ export function compileWorkspace(c: WizardConfig): Record<string, string> {
 
     // Context graph usage rules (Claude Code only)
     files[".claude/rules/context-graph-usage.md"] = generateContextGraphUsage(c);
+
+    // Official documentation references
+    files[".claude/rules/doc-references.md"] = generateDocReferencesRules(c);
   }
 
   // ── CI/CD pipeline template (generated if cicd is set, regardless of agent) ─
