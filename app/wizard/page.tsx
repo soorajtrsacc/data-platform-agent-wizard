@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import JSZip from "jszip";
 import Papa from "papaparse";
-import * as XLSX from "xlsx";
 import { compileWorkspace } from "../../lib/compiler";
 import type {
   WizardConfig,
@@ -14,11 +12,12 @@ import type {
   McpServer,
   MappingRow,
   AttachedDoc,
+  RepoConfig,
 } from "../../lib/compiler";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
 
 const PLATFORM_OPTIONS = [
   { value: "bigquery", label: "BigQuery (GoogleSQL)" },
@@ -61,6 +60,46 @@ const SCHEDULER_OPTIONS = [
   { value: "autosys", label: "CA Autosys" },
   { value: "palantir-schedules", label: "Palantir Foundry Schedules" },
 ];
+
+const CICD_OPTIONS = [
+  { value: "",                    label: "None / not applicable" },
+  { value: "github-actions",      label: "GitHub Actions" },
+  { value: "azure-pipelines",     label: "Azure DevOps Pipelines" },
+  { value: "jenkins",             label: "Jenkins" },
+  { value: "gitlab-ci",          label: "GitLab CI/CD" },
+  { value: "bamboo",              label: "Atlassian Bamboo" },
+  { value: "bitbucket-pipelines", label: "Bitbucket Pipelines" },
+];
+
+const REPO_PROVIDER_OPTIONS = [
+  { value: "github",      label: "GitHub" },
+  { value: "gitlab",      label: "GitLab" },
+  { value: "azuredevops", label: "Azure DevOps" },
+  { value: "bitbucket",   label: "Bitbucket" },
+  { value: "other",       label: "Other Git" },
+];
+
+const AGENT_OPTIONS = [
+  { value: "claude-code", label: "Claude Code",    note: "Anthropic" },
+  { value: "cursor",      label: "Cursor",          note: "Anysphere" },
+  { value: "copilot",     label: "GitHub Copilot",  note: "Microsoft" },
+  { value: "windsurf",    label: "Windsurf",        note: "Codeium" },
+  { value: "codex",       label: "Codex CLI",       note: "OpenAI" },
+  { value: "aider",       label: "Aider",           note: "Open Source" },
+  { value: "cline",       label: "Cline",           note: "Open Source" },
+  { value: "continue",    label: "Continue.dev",    note: "Open Source" },
+];
+
+const AGENT_LAUNCH: Record<string, string> = {
+  "claude-code": "claude",
+  cursor:        "cursor .",
+  copilot:       "code .  # VS Code with Copilot",
+  windsurf:      "windsurf .",
+  codex:         "codex",
+  aider:         "aider",
+  cline:         "code .  # VS Code with Cline extension",
+  continue:      "code .  # VS Code with Continue extension",
+};
 
 const MCP_PRESETS: Partial<McpServer>[] = [
   {
@@ -124,6 +163,32 @@ const MCP_PRESETS: Partial<McpServer>[] = [
 
 const uid = () => Math.random().toString(36).slice(2, 8);
 
+function detectReposFromText(text: string): Omit<RepoConfig, "id" | "name">[] {
+  const urlRe = /https?:\/\/(github\.com|gitlab\.com|dev\.azure\.com|bitbucket\.org)\/[^\s\)\]\|'"<>,;]+/g;
+  const seen = new Set<string>();
+  const results: Omit<RepoConfig, "id" | "name">[] = [];
+
+  for (const rawUrl of text.match(urlRe) ?? []) {
+    const url = rawUrl.replace(/[.,;:'")\]>]+$/, "");
+    if (seen.has(url)) continue;
+    seen.add(url);
+
+    let provider: RepoConfig["provider"] = "other";
+    if (url.includes("github.com"))      provider = "github";
+    else if (url.includes("gitlab.com")) provider = "gitlab";
+    else if (url.includes("dev.azure.com")) provider = "azuredevops";
+    else if (url.includes("bitbucket.org")) provider = "bitbucket";
+
+    // Look for branch name in surrounding 120 chars
+    const idx = text.indexOf(rawUrl);
+    const ctx = text.slice(Math.max(0, idx - 60), idx + rawUrl.length + 120);
+    const branchMatch = ctx.match(/branch[`'\s:]+`?([a-zA-Z0-9_\-./]+)`?/i);
+
+    results.push({ provider, url, branch: branchMatch?.[1] ?? "main" });
+  }
+  return results;
+}
+
 function emptyConfig(): WizardConfig {
   return {
     projectName: "",
@@ -144,12 +209,14 @@ function emptyConfig(): WizardConfig {
     mcpServers: [],
     mcpNotes: "",
     scheduler: "",
-    repoUrls: [""],
+    cicd: "",
+    repos: [{ id: uid(), provider: "github", url: "", branch: "main", name: "" }],
     deploymentNotes: "",
     designNotes: "",
     codeStandardsNotes: "",
     documents: [],
     sectionDocs: {},
+    agents: ["claude-code"],
   };
 }
 
@@ -165,6 +232,7 @@ async function parseMappingFile(file: File): Promise<MappingRow[]> {
     });
   }
   if (ext === "xlsx" || ext === "xls") {
+    const XLSX = await import("xlsx");
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type: "array" });
     const ws = wb.Sheets[wb.SheetNames[0]];
@@ -244,7 +312,7 @@ function SectionDocUpload({
 function StepIndicator({ current }: { current: number }) {
   const labels = [
     "Project", "Platforms", "Data Layers",
-    "Sources", "Mappings", "MCP Servers", "Deploy & Export",
+    "Sources", "Mappings", "MCP Servers", "Deploy & Export", "Launch & Run",
   ];
   return (
     <div className="flex items-center gap-1 mb-8 flex-wrap">
@@ -285,6 +353,27 @@ function Step1({
     if (!files) return;
     const docs = await Promise.all(Array.from(files).map(fileToAttachedDoc));
     setC((p) => ({ ...p, documents: [...p.documents, ...docs] }));
+
+    // Auto-detect git repo URLs from text-readable files (md, txt, csv)
+    for (const file of Array.from(files)) {
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+      if (!["md", "txt", "csv"].includes(ext)) continue;
+      const text = await file.text().catch(() => "");
+      if (!text) continue;
+      const detected = detectReposFromText(text);
+      if (detected.length === 0) continue;
+      setC((p) => {
+        const existingUrls = new Set((p.repos ?? []).map((r) => r.url).filter(Boolean));
+        const fresh = detected
+          .filter((r) => !existingUrls.has(r.url))
+          .map((r) => ({ ...r, id: uid(), name: "" }));
+        if (fresh.length === 0) return p;
+        const currentRepos = p.repos ?? [];
+        // Replace the initial empty placeholder if it hasn't been touched
+        const hasOnlyBlank = currentRepos.length === 1 && !currentRepos[0].url;
+        return { ...p, repos: hasOnlyBlank ? fresh : [...currentRepos, ...fresh] };
+      });
+    }
   };
 
   return (
@@ -304,6 +393,37 @@ function Step1({
         <textarea className="input min-h-[120px]" placeholder="e.g. Medallion architecture on Palantir Foundry + BigQuery. Raw data ingested from Kafka topics…"
           value={c.architectureNotes}
           onChange={(e) => setC((p) => ({ ...p, architectureNotes: e.target.value }))} />
+      </div>
+
+      <div>
+        <label className="label">AI Coding Agent(s)
+          <span className="text-gray-500 font-normal ml-2">— select all agents you want to configure</span>
+        </label>
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          {AGENT_OPTIONS.map((opt) => {
+            const checked = (c.agents ?? []).includes(opt.value);
+            return (
+              <label key={opt.value} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
+                checked ? "border-blue-500 bg-blue-950/30" : "border-gray-700 hover:border-gray-500"
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => {
+                    const current = c.agents ?? [];
+                    if (e.target.checked) {
+                      setC((p) => ({ ...p, agents: [...current, opt.value] }));
+                    } else {
+                      setC((p) => ({ ...p, agents: current.filter((a) => a !== opt.value) }));
+                    }
+                  }}
+                />
+                <span className="text-sm font-medium">{opt.label}</span>
+                <span className="text-xs text-gray-500 ml-auto">{opt.note}</span>
+              </label>
+            );
+          })}
+        </div>
       </div>
 
       <div>
@@ -797,6 +917,8 @@ function Step6({
         s.id === id ? { ...s, envVars: s.envVars.filter((_, i) => i !== idx) } : s),
     }));
 
+  const nonClaudeAgents = (c.agents ?? []).filter((a) => a !== "claude-code");
+
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Step 6 — MCP Server Connections</h2>
@@ -804,6 +926,17 @@ function Step6({
         Configure MCP (Model Context Protocol) servers so Claude Code can securely connect to your cloud environments,
         databases, and orchestration tools at runtime.
       </p>
+
+      {nonClaudeAgents.length > 0 && (
+        <div className="card bg-blue-950/20 border border-blue-700/50">
+          <p className="text-sm text-blue-300 font-medium mb-1">MCP compatibility note</p>
+          <p className="text-xs text-gray-300">
+            MCP servers are natively supported only by <strong>Claude Code</strong>.
+            For <strong>{nonClaudeAgents.map((a) => AGENT_OPTIONS.find((o) => o.value === a)?.label ?? a).join(", ")}</strong>,
+            MCP connection details will be included as manual setup notes in their instruction files.
+          </p>
+        </div>
+      )}
 
       <div>
         <label className="label mb-2">Quick-add presets</label>
@@ -927,40 +1060,104 @@ function Step6({
 }
 
 function Step7({
-  c, setC, onExport,
-}: { c: WizardConfig; setC: (fn: (p: WizardConfig) => WizardConfig) => void; onExport: () => void }) {
-  const addRepo = () => setC((p) => ({ ...p, repoUrls: [...p.repoUrls, ""] }));
-  const updateRepo = (i: number, val: string) =>
-    setC((p) => ({ ...p, repoUrls: p.repoUrls.map((u, j) => j === i ? val : u) }));
-  const removeRepo = (i: number) =>
-    setC((p) => ({ ...p, repoUrls: p.repoUrls.filter((_, j) => j !== i) }));
+  c, setC, onExport, repoError, setRepoError,
+}: {
+  c: WizardConfig;
+  setC: (fn: (p: WizardConfig) => WizardConfig) => void;
+  onExport: () => void;
+  repoError: string;
+  setRepoError: (e: string) => void;
+}) {
+  const addRepo = () =>
+    setC((p) => ({ ...p, repos: [...(p.repos ?? []), { id: uid(), provider: "github", url: "", branch: "main", name: "" }] }));
+  const updateRepo = (id: string, field: keyof RepoConfig, val: string) => {
+    if (field === "url" && val.trim()) setRepoError("");
+    setC((p) => ({ ...p, repos: (p.repos ?? []).map((r) => r.id === id ? { ...r, [field]: val } : r) }));
+  };
+  const removeRepo = (id: string) =>
+    setC((p) => ({ ...p, repos: (p.repos ?? []).filter((r) => r.id !== id) }));
 
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Step 7 — Deployment &amp; Export</h2>
 
-      <div>
-        <label className="label">Orchestration Scheduler</label>
-        <select className="input" value={c.scheduler}
-          onChange={(e) => setC((p) => ({ ...p, scheduler: e.target.value }))}>
-          {SCHEDULER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="label">Orchestration Scheduler</label>
+          <select className="input" value={c.scheduler}
+            onChange={(e) => setC((p) => ({ ...p, scheduler: e.target.value }))}>
+            {SCHEDULER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label">CI/CD Pipeline
+            <span className="text-gray-500 font-normal ml-2">— generates pipeline config file in ZIP</span>
+          </label>
+          <select className="input" value={c.cicd}
+            onChange={(e) => setC((p) => ({ ...p, cicd: e.target.value }))}>
+            {CICD_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
       </div>
 
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="label mb-0">Code Repository URLs</label>
+          <label className="label mb-0">Code Repositories
+            <span className="text-red-400 ml-1">*</span>
+            <span className="text-gray-500 font-normal ml-2">— GitHub, GitLab, Azure DevOps, Bitbucket</span>
+          </label>
           <button className="btn-secondary text-xs" onClick={addRepo}>+ Add repo</button>
         </div>
-        {c.repoUrls.map((url, i) => (
-          <div key={i} className="flex gap-2 mb-2">
-            <input className="input flex-1" placeholder="https://github.com/org/repo" value={url}
-              onChange={(e) => updateRepo(i, e.target.value)} />
-            {c.repoUrls.length > 1 && (
-              <button className="btn-secondary text-xs" onClick={() => removeRepo(i)}>✕</button>
-            )}
+        {repoError && (
+          <div className="mb-3 px-3 py-2 rounded-lg bg-red-950 border border-red-700 text-red-300 text-sm">
+            {repoError}
           </div>
-        ))}
+        )}
+        <div className="space-y-3">
+          {(c.repos ?? []).map((repo) => (
+            <div key={repo.id} className={`card space-y-2 ${repoError && !repo.url.trim() ? "border-red-600" : ""}`}>
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-medium text-gray-400">
+                  {REPO_PROVIDER_OPTIONS.find((o) => o.value === repo.provider)?.label ?? repo.provider}
+                  {repo.name ? ` — ${repo.name}` : ""}
+                </span>
+                {(c.repos ?? []).length > 1 && (
+                  <button className="btn-secondary text-xs" onClick={() => removeRepo(repo.id)}>Remove</button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="label text-xs">Provider</label>
+                  <select className="input" value={repo.provider}
+                    onChange={(e) => updateRepo(repo.id, "provider", e.target.value)}>
+                    {REPO_PROVIDER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="label text-xs">Default Branch</label>
+                  <input className="input" placeholder="main" value={repo.branch}
+                    onChange={(e) => updateRepo(repo.id, "branch", e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <label className="label text-xs">
+                  Repository URL <span className="text-red-400">*</span>
+                </label>
+                <input
+                  className={`input ${repoError && !repo.url.trim() ? "border-red-600 focus:border-red-500" : ""}`}
+                  placeholder="https://github.com/org/repo  or  https://dev.azure.com/org/project/_git/repo"
+                  value={repo.url}
+                  onChange={(e) => updateRepo(repo.id, "url", e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label text-xs">Alias / Name <span className="text-gray-500 font-normal">(optional)</span></label>
+                <input className="input" placeholder="e.g. dbt_gcp, ingestion-pipeline" value={repo.name}
+                  onChange={(e) => updateRepo(repo.id, "name", e.target.value)} />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div>
@@ -990,13 +1187,21 @@ function Step7({
         <h3 className="font-semibold mb-3">Bundle Summary</h3>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="text-gray-400">Project</div><div>{c.projectName || "—"}</div>
+          <div className="text-gray-400">Agents</div>
+          <div>
+            {(c.agents ?? []).length > 0
+              ? (c.agents ?? []).map((a) => AGENT_OPTIONS.find((o) => o.value === a)?.label ?? a).join(", ")
+              : "Claude Code (default)"}
+          </div>
           <div className="text-gray-400">Environments</div><div>{c.environments.map((e) => e.name).join(", ") || "—"}</div>
           <div className="text-gray-400">Platforms</div><div>{c.platforms.length} platform(s)</div>
           <div className="text-gray-400">Data Layers</div><div>{c.layers.length} layer(s)</div>
           <div className="text-gray-400">Sources</div><div>{c.sources.length} source(s) ({c.sources.filter((s) => s.isLegacy).length} legacy)</div>
           <div className="text-gray-400">Mapping Rows</div><div>{c.mappingRows.length} rows</div>
           <div className="text-gray-400">MCP Servers</div><div>{c.mcpServers.length} server(s)</div>
+          <div className="text-gray-400">Repositories</div><div>{(c.repos ?? []).filter((r) => r.url).length} repo(s)</div>
           <div className="text-gray-400">Scheduler</div><div>{c.scheduler || "None"}</div>
+          <div className="text-gray-400">CI/CD</div><div>{CICD_OPTIONS.find((o) => o.value === c.cicd)?.label ?? "None"}</div>
           <div className="text-gray-400">Attached Docs</div>
           <div>
             {c.documents.length} global + {Object.values(c.sectionDocs ?? {}).reduce((a, d) => a + d.length, 0)} section-specific
@@ -1005,8 +1210,171 @@ function Step7({
       </div>
 
       <button className="btn-primary w-full text-lg py-3" onClick={onExport}>
-        Download Claude Code Workspace Bundle (.zip)
+        Download Agent Workspace Bundle (.zip)
       </button>
+    </div>
+  );
+}
+
+// ─── Step 8 — Launch & Run ────────────────────────────────────────────────────
+
+const CICD_FILE_MAP: Record<string, string> = {
+  "github-actions":      ".github/workflows/ci.yml",
+  "azure-pipelines":     "azure-pipelines.yml",
+  "jenkins":             "Jenkinsfile",
+  "gitlab-ci":          ".gitlab-ci.yml",
+  "bamboo":              "bamboo-specs/bamboo.yml",
+  "bitbucket-pipelines": "bitbucket-pipelines.yml",
+};
+
+function Step8({ c }: { c: WizardConfig }) {
+  const zipName = `${c.projectName || "pipeline-agent"}-workspace.zip`;
+  const primaryPlatform = c.platforms[0]?.platform ?? "bigquery";
+  const hasMcp = c.mcpServers.length > 0;
+  const hasLegacy = c.sources.some((s) => s.isLegacy);
+  const selectedAgents = (c.agents ?? []).length > 0 ? c.agents : ["claude-code"];
+  const isClaudeCode = selectedAgents.includes("claude-code");
+
+  const cliSetup: { label: string; cmd: string }[] = [];
+  for (const p of c.platforms) {
+    if (p.cloud === "gcp" || p.platform === "bigquery" || p.platform === "dbt")
+      cliSetup.push({ label: "Authenticate GCP", cmd: "gcloud auth application-default login" });
+    if (p.cloud === "aws" || p.platform === "redshift")
+      cliSetup.push({ label: "Configure AWS", cmd: "aws configure sso" });
+    if (p.cloud === "azure" || p.platform === "synapse" || p.platform === "fabric")
+      cliSetup.push({ label: "Login Azure", cmd: "az login" });
+    if (p.platform === "databricks")
+      cliSetup.push({ label: "Configure Databricks", cmd: "databricks configure --token" });
+    if (p.platform === "palantir")
+      cliSetup.push({ label: "Login Foundry", cmd: "foundry login" });
+  }
+  const uniqueCli = cliSetup.filter((v, i, a) => a.findIndex((x) => x.cmd === v.cmd) === i);
+
+  const steps: { title: string; desc: string; code?: string }[] = [
+    {
+      title: "1. Extract the ZIP",
+      desc: `Unzip ${zipName} into a new folder — this becomes your Claude Code workspace root.`,
+      code: `# macOS / Linux\nunzip ${zipName} -d ./${c.projectName || "pipeline-agent"}-workspace\n\n# Windows (PowerShell)\nExpand-Archive -Path ${zipName} -DestinationPath .\\${c.projectName || "pipeline-agent"}-workspace`,
+    },
+    {
+      title: "2. Open your AI coding agent in the workspace",
+      desc: "Navigate into the extracted folder and launch your configured agent(s). Instruction files are automatically loaded.",
+      code: `cd ${c.projectName || "pipeline-agent"}-workspace\n\n# Launch your agent:\n${selectedAgents.map((a) => `${AGENT_LAUNCH[a] ?? a}  # ${AGENT_OPTIONS.find((o) => o.value === a)?.label ?? a}`).join("\n")}`,
+    },
+    ...(uniqueCli.length > 0
+      ? [
+          {
+            title: "3. Authenticate your cloud CLI",
+            desc: hasMcp
+              ? "Claude Code will connect to your cloud via MCP servers. Authenticate the CLI as a fallback for when MCP is unavailable."
+              : "No MCP servers were configured, so Claude Code will use CLI commands for cloud actions. Authenticate first:",
+            code: uniqueCli.map((c) => `# ${c.label}\n${c.cmd}`).join("\n\n"),
+          },
+        ]
+      : []),
+    ...(hasMcp && isClaudeCode
+      ? [
+          {
+            title: `${uniqueCli.length > 0 ? "4" : "3"}. Verify MCP server connections`,
+            desc: "Claude Code auto-loads .claude/mcp_config.json on startup. Confirm your MCP servers are reachable:",
+            code: `# Inside Claude Code, run:\n/mcp\n\n# You should see your configured servers listed as connected.\n# If a server shows as disconnected, check the CLI fallback section in CLAUDE.md.`,
+          },
+        ]
+      : []),
+    {
+      title: `${uniqueCli.length > 0 ? (hasMcp ? "5" : "4") : hasMcp ? "4" : "3"}. Issue your first agent command`,
+      desc: "Claude Code reads CLAUDE.md and understands your full stack. Start with a high-level workflow command:",
+      code: [
+        hasLegacy ? `# Migrate a legacy script\nMIGRATE legacy/scripts/daily_load.bteq TO ${primaryPlatform}` : null,
+        `# Build or scaffold a model\nBUILD ${c.layers[c.layers.length - 1]?.name?.toLowerCase().replace(/\s+/g, "_") ?? "gold"}_mart`,
+        `# Validate a model\nVALIDATE ${c.layers[0]?.name?.toLowerCase().replace(/\s+/g, "_") ?? "bronze"}_ingestion`,
+        `# Query context graph for focused context\nCONTEXT ${primaryPlatform} layer path`,
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+    },
+    {
+      title: "What's inside your ZIP",
+      desc: "Every file your configured agent(s) need is pre-generated:",
+      code: [
+        isClaudeCode ? "CLAUDE.md               ← Master instruction file (auto-loaded)" : null,
+        isClaudeCode ? ".claude/settings.json  ← Allowed tools & dialect routing" : null,
+        isClaudeCode ? ".claude/hooks/         ← Pre-bash validator, post-write linter" : null,
+        isClaudeCode ? ".claude/rules/         ← Engine rules, orchestration, context graph" : null,
+        isClaudeCode && (c.repos ?? []).some((r) => r.url) ? ".claude/rules/repo-policy.md ← Mandatory repo clone/commit/push policy" : null,
+        isClaudeCode && hasMcp ? ".claude/mcp_config.json ← MCP server connections" : null,
+        selectedAgents.includes("cursor") ? ".cursor/rules/project-context.mdc  ← Cursor project context (alwaysApply)" : null,
+        selectedAgents.includes("copilot") ? ".github/copilot-instructions.md    ← GitHub Copilot instructions" : null,
+        selectedAgents.includes("windsurf") ? ".windsurfrules                     ← Windsurf rules" : null,
+        selectedAgents.includes("codex") ? "AGENTS.md                          ← OpenAI Codex CLI agents file" : null,
+        selectedAgents.includes("aider") ? "CONVENTIONS.md + .aider.conf.yml   ← Aider conventions & config" : null,
+        selectedAgents.includes("cline") ? ".clinerules                         ← Cline rules" : null,
+        selectedAgents.includes("continue") ? ".continue/config.json              ← Continue.dev configuration" : null,
+        c.cicd && CICD_FILE_MAP[c.cicd] ? `${CICD_FILE_MAP[c.cicd]}  ← ${CICD_OPTIONS.find((o) => o.value === c.cicd)?.label ?? c.cicd} pipeline` : null,
+        "docs/mapping_contract.json  ← Source-to-target column mapping",
+        "docs/architecture_spec.md   ← Architecture reference",
+        "docs/context_graph.json     ← Graph-RAG index",
+        c.documents.length > 0 || Object.keys(c.sectionDocs ?? {}).length > 0
+          ? "docs/attachments/ & docs/sections/  ← Your reference documents"
+          : null,
+        `models/                 ← Scaffolded layer directories (${c.layers.map((l) => l.name).join(", ") || "bronze, silver, gold"})`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    },
+  ];
+
+  return (
+    <div>
+      <h2 className="text-xl font-bold mb-1">Step 8 — Launch &amp; Run</h2>
+      <p className="text-gray-400 text-sm mb-6">
+        Your workspace bundle is ready. Follow these steps to activate it in your AI coding agent.
+      </p>
+
+      <div className="space-y-5">
+        {steps.map((s, i) => (
+          <div key={i} className="border border-gray-700 rounded-lg p-4">
+            <h3 className="font-semibold text-sm mb-1">{s.title}</h3>
+            <p className="text-gray-400 text-xs mb-3">{s.desc}</p>
+            {s.code && (
+              <pre className="bg-gray-900 rounded p-3 text-xs text-green-400 overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                {s.code}
+              </pre>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {isClaudeCode && (
+        <div className="mt-6 p-4 rounded-lg bg-blue-950 border border-blue-700 text-sm">
+          <p className="font-semibold text-blue-300 mb-1">Pro tip — Context Graph</p>
+          <p className="text-gray-300 text-xs">
+            When the full CLAUDE.md is too large for a single prompt, use{" "}
+            <code className="bg-gray-800 px-1 rounded">CONTEXT &lt;query&gt;</code> inside Claude Code to load only the
+            relevant slice. Example: <code className="bg-gray-800 px-1 rounded">CONTEXT silver layer {primaryPlatform}</code>
+          </p>
+        </div>
+      )}
+
+      <div className="mt-4 p-4 rounded-lg bg-gray-800 border border-gray-600 text-xs text-gray-400">
+        <p>
+          {isClaudeCode && (
+            <>
+              Need help with Claude Code? Run <code className="bg-gray-900 px-1 rounded">/help</code> inside Claude Code, or visit{" "}
+              <a
+                href="https://docs.anthropic.com/claude-code"
+                target="_blank"
+                rel="noreferrer"
+                className="text-blue-400 underline"
+              >
+                docs.anthropic.com/claude-code
+              </a>
+              .
+            </>
+          )}
+          {!isClaudeCode && "Open the extracted folder in your agent and the instruction files will be auto-detected."}
+        </p>
+      </div>
     </div>
   );
 }
@@ -1017,6 +1385,7 @@ export default function WizardPage() {
   const [step, setStep] = useState(1);
   const [config, setConfig] = useState<WizardConfig>(emptyConfig);
   const [exporting, setExporting] = useState(false);
+  const [repoError, setRepoError] = useState("");
 
   const setC = useCallback(
     (fn: (p: WizardConfig) => WizardConfig) => setConfig((p) => fn(p)),
@@ -1026,6 +1395,7 @@ export default function WizardPage() {
   const handleExport = async () => {
     setExporting(true);
     try {
+      const { default: JSZip } = await import("jszip");
       const files = compileWorkspace(config);
       const zip = new JSZip();
       for (const [path, content] of Object.entries(files)) {
@@ -1061,7 +1431,7 @@ export default function WizardPage() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold">Pipeline Coding Agent</h1>
           <p className="text-gray-400 text-sm mt-1">
-            Multi-Engine, Cloud-Agnostic Data Pipeline Agent for Claude Code
+            Multi-Engine, Cloud-Agnostic Data Pipeline Agent Workspace — supports Claude Code, Cursor, Copilot &amp; more
           </p>
         </div>
 
@@ -1074,7 +1444,8 @@ export default function WizardPage() {
           {step === 4 && <Step4 c={config} setC={setC} />}
           {step === 5 && <Step5 c={config} setC={setC} />}
           {step === 6 && <Step6 c={config} setC={setC} />}
-          {step === 7 && <Step7 c={config} setC={setC} onExport={handleExport} />}
+          {step === 7 && <Step7 c={config} setC={setC} onExport={handleExport} repoError={repoError} setRepoError={setRepoError} />}
+          {step === 8 && <Step8 c={config} />}
         </div>
 
         <div className="flex justify-between">
@@ -1085,13 +1456,30 @@ export default function WizardPage() {
           >
             ← Back
           </button>
-          {step < TOTAL_STEPS ? (
+          {step < 7 ? (
             <button className="btn-primary" onClick={() => setStep((s) => Math.min(TOTAL_STEPS, s + 1))}>
               Next →
             </button>
+          ) : step === 7 ? (
+            <button
+              className="btn-primary"
+              onClick={async () => {
+                const hasRepo = (config.repos ?? []).some((r) => r.url.trim());
+                if (!hasRepo) {
+                  setRepoError("At least one repository URL is required before generating the workspace.");
+                  return;
+                }
+                setRepoError("");
+                await handleExport();
+                setStep(8);
+              }}
+              disabled={exporting}
+            >
+              {exporting ? "Generating…" : "Download & Continue →"}
+            </button>
           ) : (
-            <button className="btn-primary" onClick={handleExport} disabled={exporting}>
-              {exporting ? "Generating…" : "Download ZIP"}
+            <button className="btn-primary" onClick={() => { setStep(1); setConfig(emptyConfig); }}>
+              Start New Workspace
             </button>
           )}
         </div>

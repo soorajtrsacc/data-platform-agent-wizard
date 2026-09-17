@@ -64,7 +64,13 @@ export function generateClaudeMd(c: WizardConfig): string {
       ).join("\n")
     : "| — | (no sources defined) | — | — |";
 
-  const repoList = c.repoUrls.filter(Boolean).map((u) => `- ${u}`).join("\n") || "- (not configured)";
+  const PROVIDER_LABEL: Record<string, string> = {
+    github: "GitHub", gitlab: "GitLab", azuredevops: "Azure DevOps",
+    bitbucket: "Bitbucket", other: "Git",
+  };
+  const repoList = (c.repos ?? []).filter((r) => r.url).map((r) =>
+    `- **${PROVIDER_LABEL[r.provider] ?? r.provider}**${r.name ? ` (${r.name})` : ""} — \`${r.url}\` · branch: \`${r.branch || "main"}\``
+  ).join("\n") || "- (not configured)";
   const docList = c.documents.length
     ? c.documents.map((d) => `- \`docs/attachments/${d.name}\``).join("\n")
     : "- (none attached)";
@@ -143,6 +149,27 @@ and architectural decisions that are not otherwise explicit in this file.
 
 ## Code Repositories
 ${repoList}
+
+### Repository Workflow
+${(c.repos ?? []).filter((r) => r.url).length > 0 ? `
+Before making any code changes, ensure the repository is cloned and you are on the correct branch:
+
+\`\`\`bash
+# Clone the repo if not already present
+${(c.repos ?? []).filter((r) => r.url).map((r) => `git clone ${r.url}${r.name ? `  # ${r.name}` : ""}\ncd ${r.url.split("/").pop()?.replace(/\.git$/, "") ?? "repo"}\ngit checkout ${r.branch || "main"}`).join("\n\n")}
+\`\`\`
+
+**All code edits must happen inside the cloned repository directory.**
+After completing changes, commit and push:
+
+\`\`\`bash
+git add -A
+git commit -m "<describe what you changed>"
+git push origin ${(c.repos ?? []).find((r) => r.url)?.branch || "main"}
+\`\`\`
+
+When the user asks you to implement, fix, refactor, or add something — clone the repo first if it is not already present, make the changes, then commit and push unless the user says otherwise.
+`.trim() : "_No repositories configured._"}
 
 ---
 
@@ -844,7 +871,8 @@ ${c.sources.map((s) => `- **${s.name}** (${s.platform}) — ${s.isLegacy ? "Lega
 
 ## Orchestration
 - Scheduler: ${(SCHEDULER_LABEL[c.scheduler] ?? c.scheduler) || "TBD"}
-- Repos: ${c.repoUrls.filter(Boolean).join(", ") || "TBD"}
+- CI/CD: ${c.cicd || "None"}
+- Repos: ${(c.repos ?? []).filter((r) => r.url).map((r) => `${r.url} (${r.branch || "main"})`).join(", ") || "TBD"}
 
 ## Deployment Process
 ${c.deploymentNotes || "TBD"}
@@ -857,5 +885,545 @@ ${c.codeStandardsNotes || "TBD"}
 
 ## Attached Documents
 ${c.documents.length ? c.documents.map((d) => `- ${d.name}`).join("\n") : "None"}
+`;
+}
+
+// ─── CI/CD pipeline template generator ───────────────────────────────────────
+
+export function generateCicdTemplate(c: WizardConfig): [string, string] | null {
+  const primaryPlatform = c.platforms[0]?.platform ?? "bigquery";
+  const primaryRepo    = (c.repos ?? []).find((r) => r.url);
+  const branch         = primaryRepo?.branch ?? "main";
+  const projectName    = c.projectName || "pipeline-agent";
+
+  const dbtCmd  = c.platforms.some((p) => p.platform === "dbt")
+    ? `dbt build --profiles-dir .`
+    : `echo "No dbt platform configured"`;
+
+  switch (c.cicd) {
+    case "github-actions":
+      return [
+        ".github/workflows/ci.yml",
+        `name: CI — ${projectName}
+
+on:
+  pull_request:
+    branches: ["${branch}"]
+  push:
+    branches: ["${branch}"]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dbt
+        run: pip install dbt-bigquery
+
+      - name: Authenticate GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: \${{ secrets.GCP_SA_KEY }}
+
+      - name: Run dbt build
+        run: ${dbtCmd}
+        env:
+          GCP_PROJECT_ID: \${{ secrets.GCP_PROJECT_ID }}
+`,
+      ];
+
+    case "azure-pipelines":
+      return [
+        "azure-pipelines.yml",
+        `trigger:
+  branches:
+    include:
+      - "${branch}"
+
+pr:
+  branches:
+    include:
+      - "${branch}"
+
+pool:
+  vmImage: "ubuntu-latest"
+
+steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: "3.11"
+    displayName: "Set up Python"
+
+  - script: pip install dbt-${primaryPlatform === "bigquery" ? "bigquery" : primaryPlatform}
+    displayName: "Install dbt"
+
+  - task: AzureCLI@2
+    displayName: "Authenticate cloud"
+    inputs:
+      azureSubscription: "$(AZURE_SERVICE_CONNECTION)"
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        az --version
+
+  - script: ${dbtCmd}
+    displayName: "Run dbt build"
+    env:
+      GCP_PROJECT_ID: $(GCP_PROJECT_ID)
+`,
+      ];
+
+    case "jenkins":
+      return [
+        "Jenkinsfile",
+        `pipeline {
+    agent any
+
+    environment {
+        GCP_PROJECT_ID = credentials('GCP_PROJECT_ID')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Setup') {
+            steps {
+                sh 'pip install dbt-${primaryPlatform === "bigquery" ? "bigquery" : primaryPlatform}'
+            }
+        }
+
+        stage('Authenticate') {
+            steps {
+                withCredentials([file(credentialsId: 'GCP_SA_KEY', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
+                }
+            }
+        }
+
+        stage('Build & Test') {
+            steps {
+                sh '${dbtCmd}'
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Pipeline ${projectName} complete — status: \${currentBuild.result}"
+        }
+    }
+}
+`,
+      ];
+
+    case "gitlab-ci":
+      return [
+        ".gitlab-ci.yml",
+        `image: python:3.11
+
+stages:
+  - validate
+
+variables:
+  GCP_PROJECT_ID: "\${GCP_PROJECT_ID}"
+
+validate:
+  stage: validate
+  before_script:
+    - pip install dbt-${primaryPlatform === "bigquery" ? "bigquery" : primaryPlatform}
+    - echo "\${GCP_SA_KEY}" > /tmp/sa_key.json
+    - gcloud auth activate-service-account --key-file=/tmp/sa_key.json
+  script:
+    - ${dbtCmd}
+  only:
+    - "${branch}"
+    - merge_requests
+`,
+      ];
+
+    case "bamboo":
+      return [
+        "bamboo-specs/bamboo.yml",
+        `version: 2
+
+plan:
+  project-key: ${projectName.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5) || "PIPE"}
+  key: CI
+  name: "${projectName} CI"
+
+stages:
+  - Validate:
+      manual: false
+      final: false
+      jobs:
+        - Build
+
+Build:
+  key: BUILD
+  tasks:
+    - script:
+        interpreter: SHELL
+        scripts:
+          - pip install dbt-${primaryPlatform === "bigquery" ? "bigquery" : primaryPlatform}
+          - ${dbtCmd}
+  requirements:
+    - python3
+
+triggers:
+  - remote:
+      path: "${branch}"
+`,
+      ];
+
+    case "bitbucket-pipelines":
+      return [
+        "bitbucket-pipelines.yml",
+        `image: python:3.11
+
+pipelines:
+  branches:
+    "${branch}":
+      - step:
+          name: Validate — ${projectName}
+          script:
+            - pip install dbt-${primaryPlatform === "bigquery" ? "bigquery" : primaryPlatform}
+            - echo "\${GCP_SA_KEY}" > /tmp/sa_key.json
+            - gcloud auth activate-service-account --key-file=/tmp/sa_key.json
+            - ${dbtCmd}
+          services:
+            - docker
+
+  pull-requests:
+    "**":
+      - step:
+          name: PR Check
+          script:
+            - pip install dbt-${primaryPlatform === "bigquery" ? "bigquery" : primaryPlatform}
+            - ${dbtCmd}
+`,
+      ];
+
+    default:
+      return null;
+  }
+}
+
+// ─── Core instructions (shared by all agent generators) ──────────────────────
+
+export function generateCoreInstructions(c: WizardConfig): string {
+  const envList = c.environments.map((e) => e.name).join(", ") || "dev, staging, prod";
+
+  const PROVIDER_LABEL: Record<string, string> = {
+    github: "GitHub", gitlab: "GitLab", azuredevops: "Azure DevOps",
+    bitbucket: "Bitbucket", other: "Git",
+  };
+
+  const platformList = c.platforms.length
+    ? c.platforms.map((p) =>
+        `- ${PLATFORM_LABEL[p.platform] ?? p.platform} on ${CLOUD_LABEL[p.cloud] ?? p.cloud}${p.region ? ` (${p.region})` : ""} — ${p.role}`
+      ).join("\n")
+    : "- (no platforms configured)";
+
+  const layerList = c.layers.length
+    ? c.layers.map((l) =>
+        `- **${l.name}**: \`${l.pathTemplate || "—"}\` — ${l.description || "no description"}`
+      ).join("\n")
+    : "- (no layers defined)";
+
+  const sourceList = c.sources.length
+    ? c.sources.map((s) =>
+        `- **${s.name}** (${s.platform}) — ${s.isLegacy ? "legacy migration source" : "modern integration"}`
+      ).join("\n")
+    : "- (no sources defined)";
+
+  const repoList = (c.repos ?? []).filter((r) => r.url).map((r) =>
+    `- **${PROVIDER_LABEL[r.provider] ?? r.provider}**${r.name ? ` (${r.name})` : ""}: \`${r.url}\` · branch: \`${r.branch || "main"}\``
+  ).join("\n") || "- (not configured)";
+
+  const primaryRepo = (c.repos ?? []).find((r) => r.url);
+  const repoDir = primaryRepo?.url.split("/").pop()?.replace(/\.git$/, "") ?? "repo";
+  const branch = primaryRepo?.branch || "main";
+  const repoWorkflow = primaryRepo
+    ? `
+### Repository Workflow
+
+Before making any code change, run:
+\`\`\`bash
+# Clone if not already present
+ls ${repoDir} 2>/dev/null || git clone ${primaryRepo.url}
+cd ${repoDir}
+git fetch origin
+git checkout ${branch}
+git pull origin ${branch}
+\`\`\`
+
+After completing changes:
+\`\`\`bash
+git add -A
+git commit -m "<describe what changed>"
+git push origin ${branch}
+\`\`\`
+`
+    : "";
+
+  const mcpSection =
+    c.mcpServers.length > 0
+      ? `
+## MCP Server Connections
+
+> MCP servers are natively supported by Claude Code. For other agents, use the following connection details manually:
+
+${c.mcpServers
+  .map((s) => {
+    if (s.transport === "stdio") {
+      const args = (s.args ?? []).join(" ");
+      return `- **${s.name}**: \`${s.command ?? "?"} ${args}\` (stdio)${s.description ? ` — ${s.description}` : ""}`;
+    }
+    return `- **${s.name}**: \`${s.url ?? "?"}\` (${s.transport})${s.description ? ` — ${s.description}` : ""}`;
+  })
+  .join("\n")}
+`
+      : "";
+
+  const deploySection = c.deploymentNotes ? `\n## Deployment\n${c.deploymentNotes}\n` : "";
+  const designSection = c.designNotes ? `\n## Design Decisions\n${c.designNotes}\n` : "";
+
+  return `## Project: ${c.projectName || "Pipeline Agent"}
+
+${c.architectureNotes ? `### Architecture\n${c.architectureNotes}\n` : ""}## Stack & Environments
+
+**Environments:** ${envList}
+
+### Platforms
+${platformList}
+
+## Data Layers
+
+${layerList}
+
+## Source Systems
+
+${sourceList}
+
+## Code Repositories
+
+${repoList}
+${repoWorkflow}${mcpSection}
+## Coding Standards
+
+${c.codeStandardsNotes || "Follow the engine-specific rules and standard SQL/Python coding standards."}
+${deploySection}${designSection}`;
+}
+
+// ─── Agent-specific generators ────────────────────────────────────────────────
+
+export function generateCursorRules(c: WizardConfig): string {
+  return `---
+description: ${c.projectName || "Pipeline project"} — project context and coding standards
+globs: ""
+alwaysApply: true
+---
+
+${generateCoreInstructions(c)}
+`;
+}
+
+export function generateCopilotInstructions(c: WizardConfig): string {
+  return `# GitHub Copilot Instructions — ${c.projectName || "Pipeline Agent"}
+
+${generateCoreInstructions(c)}
+`;
+}
+
+export function generateWindsurfRules(c: WizardConfig): string {
+  return `# Windsurf Rules — ${c.projectName || "Pipeline Agent"}
+
+${generateCoreInstructions(c)}
+`;
+}
+
+export function generateCodexAgents(c: WizardConfig): string {
+  return `# AGENTS — ${c.projectName || "Pipeline Agent"}
+
+${generateCoreInstructions(c)}
+`;
+}
+
+export function generateAiderConventions(c: WizardConfig): [string, string] {
+  const conventions = `# Conventions — ${c.projectName || "Pipeline Agent"}
+
+${generateCoreInstructions(c)}
+`;
+  const aiderConf = `model: gpt-4o\nread: CONVENTIONS.md`;
+  return [conventions, aiderConf];
+}
+
+export function generateClineRules(c: WizardConfig): string {
+  return `# Cline Rules — ${c.projectName || "Pipeline Agent"}
+
+${generateCoreInstructions(c)}
+`;
+}
+
+export function generateContinueConfig(c: WizardConfig): string {
+  return JSON.stringify(
+    {
+      systemMessage: generateCoreInstructions(c),
+      models: [],
+    },
+    null,
+    2
+  );
+}
+
+// ─── Repository policy rule file ─────────────────────────────────────────────
+
+export function generateRepoPolicyRules(c: WizardConfig): string {
+  const repos = (c.repos ?? []).filter((r) => r.url);
+  if (repos.length === 0) return "";
+
+  const PROVIDER_LABEL: Record<string, string> = {
+    github: "GitHub", gitlab: "GitLab", azuredevops: "Azure DevOps",
+    bitbucket: "Bitbucket", other: "Git",
+  };
+
+  const cicdLabel: Record<string, string> = {
+    "github-actions":      "GitHub Actions (.github/workflows/ci.yml)",
+    "azure-pipelines":     "Azure DevOps Pipelines (azure-pipelines.yml)",
+    "jenkins":             "Jenkins (Jenkinsfile)",
+    "gitlab-ci":          "GitLab CI/CD (.gitlab-ci.yml)",
+    "bamboo":              "Atlassian Bamboo (bamboo-specs/bamboo.yml)",
+    "bitbucket-pipelines": "Bitbucket Pipelines (bitbucket-pipelines.yml)",
+  };
+
+  const primaryRepo = repos[0];
+  const repoDir = primaryRepo.url.split("/").pop()?.replace(/\.git$/, "") ?? "repo";
+  const branch   = primaryRepo.branch || "main";
+  const hasCicd  = !!c.cicd;
+
+  return `# Repository Policy — ${c.projectName || "Pipeline Agent"}
+
+> **This file is enforced as a standing Claude Code rule.**
+> Every session must follow these policies before writing, editing, or running any code.
+
+---
+
+## Registered Repositories
+
+${repos.map((r) => `- **${PROVIDER_LABEL[r.provider] ?? r.provider}**${r.name ? ` (${r.name})` : ""}: \`${r.url}\` · default branch: \`${r.branch || "main"}\``).join("\n")}
+
+---
+
+## Mandatory Pre-Work Checklist
+
+Before making **any** code change, run through this checklist in order:
+
+### 1. Clone the repository (if not already present)
+\`\`\`bash
+# Check if the repo directory already exists
+ls ${repoDir} 2>/dev/null || git clone ${primaryRepo.url}
+cd ${repoDir}
+\`\`\`
+
+### 2. Switch to the correct branch
+\`\`\`bash
+git fetch origin
+git checkout ${branch}
+git pull origin ${branch}
+\`\`\`
+
+### 3. Confirm working directory
+All edits **must** happen inside \`${repoDir}/\`. Never modify files outside this directory unless the user explicitly directs otherwise.
+
+---
+
+## Code Change Workflow
+
+After completing a set of changes:
+
+\`\`\`bash
+# Review what changed
+git diff --stat
+
+# Stage and commit
+git add -A
+git commit -m "<concise description of what changed and why>"
+
+# Push to origin
+git push origin ${branch}
+\`\`\`
+
+**Commit message rules:**
+- Start with a verb: \`add\`, \`fix\`, \`update\`, \`remove\`, \`refactor\`
+- Reference the layer or component: e.g. \`fix: silver SAFE_CAST null handling in silver_transactions\`
+- Keep the subject line under 72 characters
+- Do **not** use \`--no-verify\` to bypass hooks
+
+---
+
+## Branch Strategy
+
+| Scenario | Branch |
+|---|---|
+| Routine fixes and model updates | push directly to \`${branch}\` |
+| New features or significant refactors | create \`feat/<short-name>\` from \`${branch}\`, then open a PR |
+| Hotfixes | create \`hotfix/<short-name>\` from \`${branch}\` |
+
+\`\`\`bash
+# Create a feature branch
+git checkout -b feat/<short-name> ${branch}
+# … make changes …
+git push origin feat/<short-name>
+\`\`\`
+
+${hasCicd ? `---
+
+## CI/CD Integration
+
+This project uses **${cicdLabel[c.cicd] ?? c.cicd}**.
+
+The pipeline runs automatically on push to \`${branch}\` and on pull requests.
+
+**Before pushing**, ensure:
+- \`dbt build\` passes locally (no compilation or test errors)
+- No secrets or credentials are committed (use environment variables)
+- The pipeline config file (\`${cicdLabel[c.cicd]?.match(/\(([^)]+)\)/)?.[1] ?? "ci config"}\`) is not broken
+
+If CI fails after your push, investigate the pipeline logs and fix before asking the user to review.
+` : ""}
+---
+
+## What NOT to Do
+
+- **Never** hard-code credentials, project IDs, or connection strings — use environment variables
+- **Never** force-push to \`${branch}\` (\`git push --force\`)
+- **Never** skip \`git pull\` before starting work (stale branches cause merge conflicts)
+- **Never** commit generated files, \`.next/\`, \`node_modules/\`, \`__pycache__/\`, or \`.env\` files
+- **Never** delete branches that have open PRs without closing the PR first
+
+---
+
+## Quick Reference
+
+\`\`\`bash
+# Start of every session
+git clone ${primaryRepo.url} 2>/dev/null; cd ${repoDir} && git checkout ${branch} && git pull origin ${branch}
+
+# End of every task
+git add -A && git commit -m "<message>" && git push origin ${branch}
+
+# Check status at any time
+git status && git log --oneline -5
+\`\`\`
 `;
 }

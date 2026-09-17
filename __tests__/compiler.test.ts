@@ -30,12 +30,14 @@ function baseConfig(overrides: Partial<WizardConfig> = {}): WizardConfig {
     mcpServers: [],
     mcpNotes: "",
     scheduler: "airflow",
-    repoUrls: ["https://github.com/org/repo"],
+    cicd: "github-actions",
+    repos: [{ id: "r1", provider: "github", url: "https://github.com/org/repo", branch: "main", name: "repo" }],
     deploymentNotes: "Deploy via CI",
     designNotes: "",
     codeStandardsNotes: "",
     documents: [],
     sectionDocs: {},
+    agents: ["claude-code"],
     ...overrides,
   };
 }
@@ -322,6 +324,23 @@ describe("generateClaudeMd — content checks", () => {
   it("shows project name in header", () => {
     const files = compileWorkspace(baseConfig({ projectName: "my-special-project" }));
     expect(files["CLAUDE.md"]).toContain("my-special-project");
+  });
+});
+
+// ─── Multi-agent support ──────────────────────────────────────────────────────
+
+describe("compileWorkspace — multi-agent support", () => {
+  it("emits cursor rules for cursor agent", () => {
+    const files = compileWorkspace(baseConfig({ agents: ["cursor"] }));
+    expect(files[".cursor/rules/project-context.mdc"]).toBeDefined();
+    expect(files[".cursor/rules/project-context.mdc"]).toContain("test-pipeline");
+  });
+
+  it("skips .claude/ files when only cursor agent selected", () => {
+    const files = compileWorkspace(baseConfig({ agents: ["cursor"] }));
+    expect(files["CLAUDE.md"]).toBeUndefined();
+    expect(files[".claude/settings.json"]).toBeUndefined();
+    expect(files[".claude/hooks/pre_bash_validator.py"]).toBeUndefined();
   });
 });
 
