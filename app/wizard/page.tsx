@@ -1226,6 +1226,7 @@ function Step8({ c }: { c: WizardConfig }) {
         ".claude/settings.json  ← Allowed tools & dialect routing",
         ".claude/hooks/         ← Pre-bash validator, post-write linter",
         ".claude/rules/         ← Engine rules, orchestration, context graph",
+        (c.repos ?? []).some((r) => r.url) ? ".claude/rules/repo-policy.md ← Mandatory repo clone/commit/push policy" : null,
         hasMcp ? ".claude/mcp_config.json ← MCP server connections" : null,
         c.cicd && CICD_FILE_MAP[c.cicd] ? `${CICD_FILE_MAP[c.cicd]}  ← ${CICD_OPTIONS.find((o) => o.value === c.cicd)?.label ?? c.cicd} pipeline` : null,
         "docs/mapping_contract.json  ← Source-to-target column mapping",

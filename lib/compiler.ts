@@ -11,6 +11,7 @@ import {
   generateArchitectureSpec,
   generateMcpConfig,
   generateCicdTemplate,
+  generateRepoPolicyRules,
 } from "./templates";
 import { buildContextGraph, generateContextGraphUsage } from "./context-graph";
 
@@ -158,6 +159,12 @@ export function compileWorkspace(c: WizardConfig): Record<string, string> {
       const [path, content] = cicdFile;
       files[path] = content;
     }
+  }
+
+  // Repository policy rule file (always enforced by Claude Code)
+  const repoPolicy = generateRepoPolicyRules(c);
+  if (repoPolicy) {
+    files[".claude/rules/repo-policy.md"] = repoPolicy;
   }
 
   // MCP server config
