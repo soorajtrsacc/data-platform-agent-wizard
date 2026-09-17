@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import JSZip from "jszip";
 import Link from "next/link";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -407,6 +406,7 @@ export default function MigrationPage() {
   const handleExport = async () => {
     setExporting(true);
     try {
+      const { default: JSZip } = await import("jszip");
       const zip = new JSZip();
       zip.file("CLAUDE.md", generateMigrationClaudeMd(c));
       zip.file(`.claude/rules/migration-${c.sourceLanguage}-to-${c.targetLanguage}.md`, generateMigrationRules(c));

@@ -64,7 +64,13 @@ export function generateClaudeMd(c: WizardConfig): string {
       ).join("\n")
     : "| — | (no sources defined) | — | — |";
 
-  const repoList = c.repoUrls.filter(Boolean).map((u) => `- ${u}`).join("\n") || "- (not configured)";
+  const PROVIDER_LABEL: Record<string, string> = {
+    github: "GitHub", gitlab: "GitLab", azuredevops: "Azure DevOps",
+    bitbucket: "Bitbucket", other: "Git",
+  };
+  const repoList = (c.repos ?? []).filter((r) => r.url).map((r) =>
+    `- **${PROVIDER_LABEL[r.provider] ?? r.provider}**${r.name ? ` (${r.name})` : ""} — \`${r.url}\` · branch: \`${r.branch || "main"}\``
+  ).join("\n") || "- (not configured)";
   const docList = c.documents.length
     ? c.documents.map((d) => `- \`docs/attachments/${d.name}\``).join("\n")
     : "- (none attached)";
@@ -143,6 +149,27 @@ and architectural decisions that are not otherwise explicit in this file.
 
 ## Code Repositories
 ${repoList}
+
+### Repository Workflow
+${(c.repos ?? []).filter((r) => r.url).length > 0 ? `
+Before making any code changes, ensure the repository is cloned and you are on the correct branch:
+
+\`\`\`bash
+# Clone the repo if not already present
+${(c.repos ?? []).filter((r) => r.url).map((r) => `git clone ${r.url}${r.name ? `  # ${r.name}` : ""}\ncd ${r.url.split("/").pop()?.replace(/\.git$/, "") ?? "repo"}\ngit checkout ${r.branch || "main"}`).join("\n\n")}
+\`\`\`
+
+**All code edits must happen inside the cloned repository directory.**
+After completing changes, commit and push:
+
+\`\`\`bash
+git add -A
+git commit -m "<describe what you changed>"
+git push origin ${(c.repos ?? []).find((r) => r.url)?.branch || "main"}
+\`\`\`
+
+When the user asks you to implement, fix, refactor, or add something — clone the repo first if it is not already present, make the changes, then commit and push unless the user says otherwise.
+`.trim() : "_No repositories configured._"}
 
 ---
 
@@ -844,7 +871,7 @@ ${c.sources.map((s) => `- **${s.name}** (${s.platform}) — ${s.isLegacy ? "Lega
 
 ## Orchestration
 - Scheduler: ${(SCHEDULER_LABEL[c.scheduler] ?? c.scheduler) || "TBD"}
-- Repos: ${c.repoUrls.filter(Boolean).join(", ") || "TBD"}
+- Repos: ${(c.repos ?? []).filter((r) => r.url).map((r) => `${r.url} (${r.branch || "main"})`).join(", ") || "TBD"}
 
 ## Deployment Process
 ${c.deploymentNotes || "TBD"}

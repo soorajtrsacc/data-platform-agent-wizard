@@ -30,7 +30,7 @@ function baseConfig(overrides: Partial<WizardConfig> = {}): WizardConfig {
     mcpServers: [],
     mcpNotes: "",
     scheduler: "airflow",
-    repoUrls: ["https://github.com/org/repo"],
+    repos: [{ id: "r1", provider: "github", url: "https://github.com/org/repo", branch: "main", name: "repo" }],
     deploymentNotes: "Deploy via CI",
     designNotes: "",
     codeStandardsNotes: "",

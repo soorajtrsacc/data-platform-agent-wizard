@@ -68,6 +68,14 @@ export interface McpServer {
   description: string;
 }
 
+export interface RepoConfig {
+  id: string;
+  provider: "github" | "gitlab" | "azuredevops" | "bitbucket" | "other";
+  url: string;
+  branch: string;   // default branch, e.g. "main" or "master"
+  name: string;     // optional human-readable alias
+}
+
 export interface WizardConfig {
   // Step 1 – Project
   projectName: string;
@@ -96,7 +104,7 @@ export interface WizardConfig {
 
   // Step 7 – Deployment
   scheduler: string;
-  repoUrls: string[];
+  repos: RepoConfig[];
   deploymentNotes: string;
   designNotes: string;
   codeStandardsNotes: string;
