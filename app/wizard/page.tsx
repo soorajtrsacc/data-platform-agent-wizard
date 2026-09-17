@@ -61,6 +61,16 @@ const SCHEDULER_OPTIONS = [
   { value: "palantir-schedules", label: "Palantir Foundry Schedules" },
 ];
 
+const CICD_OPTIONS = [
+  { value: "",                    label: "None / not applicable" },
+  { value: "github-actions",      label: "GitHub Actions" },
+  { value: "azure-pipelines",     label: "Azure DevOps Pipelines" },
+  { value: "jenkins",             label: "Jenkins" },
+  { value: "gitlab-ci",          label: "GitLab CI/CD" },
+  { value: "bamboo",              label: "Atlassian Bamboo" },
+  { value: "bitbucket-pipelines", label: "Bitbucket Pipelines" },
+];
+
 const REPO_PROVIDER_OPTIONS = [
   { value: "github",      label: "GitHub" },
   { value: "gitlab",      label: "GitLab" },
@@ -177,6 +187,7 @@ function emptyConfig(): WizardConfig {
     mcpServers: [],
     mcpNotes: "",
     scheduler: "",
+    cicd: "",
     repos: [{ id: uid(), provider: "github", url: "", branch: "main", name: "" }],
     deploymentNotes: "",
     designNotes: "",
@@ -1003,12 +1014,23 @@ function Step7({
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Step 7 — Deployment &amp; Export</h2>
 
-      <div>
-        <label className="label">Orchestration Scheduler</label>
-        <select className="input" value={c.scheduler}
-          onChange={(e) => setC((p) => ({ ...p, scheduler: e.target.value }))}>
-          {SCHEDULER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="label">Orchestration Scheduler</label>
+          <select className="input" value={c.scheduler}
+            onChange={(e) => setC((p) => ({ ...p, scheduler: e.target.value }))}>
+            {SCHEDULER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label">CI/CD Pipeline
+            <span className="text-gray-500 font-normal ml-2">— generates pipeline config file in ZIP</span>
+          </label>
+          <select className="input" value={c.cicd}
+            onChange={(e) => setC((p) => ({ ...p, cicd: e.target.value }))}>
+            {CICD_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
       </div>
 
       <div>
@@ -1106,6 +1128,7 @@ function Step7({
           <div className="text-gray-400">MCP Servers</div><div>{c.mcpServers.length} server(s)</div>
           <div className="text-gray-400">Repositories</div><div>{(c.repos ?? []).filter((r) => r.url).length} repo(s)</div>
           <div className="text-gray-400">Scheduler</div><div>{c.scheduler || "None"}</div>
+          <div className="text-gray-400">CI/CD</div><div>{CICD_OPTIONS.find((o) => o.value === c.cicd)?.label ?? "None"}</div>
           <div className="text-gray-400">Attached Docs</div>
           <div>
             {c.documents.length} global + {Object.values(c.sectionDocs ?? {}).reduce((a, d) => a + d.length, 0)} section-specific
@@ -1121,6 +1144,15 @@ function Step7({
 }
 
 // ─── Step 8 — Launch & Run ────────────────────────────────────────────────────
+
+const CICD_FILE_MAP: Record<string, string> = {
+  "github-actions":      ".github/workflows/ci.yml",
+  "azure-pipelines":     "azure-pipelines.yml",
+  "jenkins":             "Jenkinsfile",
+  "gitlab-ci":          ".gitlab-ci.yml",
+  "bamboo":              "bamboo-specs/bamboo.yml",
+  "bitbucket-pipelines": "bitbucket-pipelines.yml",
+};
 
 function Step8({ c }: { c: WizardConfig }) {
   const zipName = `${c.projectName || "pipeline-agent"}-workspace.zip`;
@@ -1195,6 +1227,7 @@ function Step8({ c }: { c: WizardConfig }) {
         ".claude/hooks/         ← Pre-bash validator, post-write linter",
         ".claude/rules/         ← Engine rules, orchestration, context graph",
         hasMcp ? ".claude/mcp_config.json ← MCP server connections" : null,
+        c.cicd && CICD_FILE_MAP[c.cicd] ? `${CICD_FILE_MAP[c.cicd]}  ← ${CICD_OPTIONS.find((o) => o.value === c.cicd)?.label ?? c.cicd} pipeline` : null,
         "docs/mapping_contract.json  ← Source-to-target column mapping",
         "docs/architecture_spec.md   ← Architecture reference",
         "docs/context_graph.json     ← Graph-RAG index (CONTEXT command)",

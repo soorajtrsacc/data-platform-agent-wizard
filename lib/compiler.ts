@@ -10,6 +10,7 @@ import {
   generateMappingContract,
   generateArchitectureSpec,
   generateMcpConfig,
+  generateCicdTemplate,
 } from "./templates";
 import { buildContextGraph, generateContextGraphUsage } from "./context-graph";
 
@@ -104,6 +105,7 @@ export interface WizardConfig {
 
   // Step 7 – Deployment
   scheduler: string;
+  cicd: string;          // jenkins | azure-pipelines | bamboo | github-actions | gitlab-ci | bitbucket-pipelines | ""
   repos: RepoConfig[];
   deploymentNotes: string;
   designNotes: string;
@@ -147,6 +149,15 @@ export function compileWorkspace(c: WizardConfig): Record<string, string> {
   // Orchestration rules
   if (c.scheduler) {
     files[`.claude/rules/orchestration-${c.scheduler}.md`] = generateOrchestrationRules(c);
+  }
+
+  // CI/CD pipeline template
+  if (c.cicd) {
+    const cicdFile = generateCicdTemplate(c);
+    if (cicdFile) {
+      const [path, content] = cicdFile;
+      files[path] = content;
+    }
   }
 
   // MCP server config

@@ -871,6 +871,7 @@ ${c.sources.map((s) => `- **${s.name}** (${s.platform}) — ${s.isLegacy ? "Lega
 
 ## Orchestration
 - Scheduler: ${(SCHEDULER_LABEL[c.scheduler] ?? c.scheduler) || "TBD"}
+- CI/CD: ${c.cicd || "None"}
 - Repos: ${(c.repos ?? []).filter((r) => r.url).map((r) => `${r.url} (${r.branch || "main"})`).join(", ") || "TBD"}
 
 ## Deployment Process
@@ -885,4 +886,234 @@ ${c.codeStandardsNotes || "TBD"}
 ## Attached Documents
 ${c.documents.length ? c.documents.map((d) => `- ${d.name}`).join("\n") : "None"}
 `;
+}
+
+// ─── CI/CD pipeline template generator ───────────────────────────────────────
+
+export function generateCicdTemplate(c: WizardConfig): [string, string] | null {
+  const primaryPlatform = c.platforms[0]?.platform ?? "bigquery";
+  const primaryRepo    = (c.repos ?? []).find((r) => r.url);
+  const branch         = primaryRepo?.branch ?? "main";
+  const projectName    = c.projectName || "pipeline-agent";
+
+  const dbtCmd  = c.platforms.some((p) => p.platform === "dbt")
+    ? `dbt build --profiles-dir .`
+    : `echo "No dbt platform configured"`;
+
+  switch (c.cicd) {
+    case "github-actions":
+      return [
+        ".github/workflows/ci.yml",
+        `name: CI — ${projectName}
+
+on:
+  pull_request:
+    branches: ["${branch}"]
+  push:
+    branches: ["${branch}"]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dbt
+        run: pip install dbt-bigquery
+
+      - name: Authenticate GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: \${{ secrets.GCP_SA_KEY }}
+
+      - name: Run dbt build
+        run: ${dbtCmd}
+        env:
+          GCP_PROJECT_ID: \${{ secrets.GCP_PROJECT_ID }}
+`,
+      ];
+
+    case "azure-pipelines":
+      return [
+        "azure-pipelines.yml",
+        `trigger:
+  branches:
+    include:
+      - "${branch}"
+
+pr:
+  branches:
+    include:
+      - "${branch}"
+
+pool:
+  vmImage: "ubuntu-latest"
+
+steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: "3.11"
+    displayName: "Set up Python"
+
+  - script: pip install dbt-${primaryPlatform === "bigquery" ? "bigquery" : primaryPlatform}
+    displayName: "Install dbt"
+
+  - task: AzureCLI@2
+    displayName: "Authenticate cloud"
+    inputs:
+      azureSubscription: "$(AZURE_SERVICE_CONNECTION)"
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        az --version
+
+  - script: ${dbtCmd}
+    displayName: "Run dbt build"
+    env:
+      GCP_PROJECT_ID: $(GCP_PROJECT_ID)
+`,
+      ];
+
+    case "jenkins":
+      return [
+        "Jenkinsfile",
+        `pipeline {
+    agent any
+
+    environment {
+        GCP_PROJECT_ID = credentials('GCP_PROJECT_ID')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Setup') {
+            steps {
+                sh 'pip install dbt-${primaryPlatform === "bigquery" ? "bigquery" : primaryPlatform}'
+            }
+        }
+
+        stage('Authenticate') {
+            steps {
+                withCredentials([file(credentialsId: 'GCP_SA_KEY', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    sh 'gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS'
+                }
+            }
+        }
+
+        stage('Build & Test') {
+            steps {
+                sh '${dbtCmd}'
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Pipeline ${projectName} complete — status: \${currentBuild.result}"
+        }
+    }
+}
+`,
+      ];
+
+    case "gitlab-ci":
+      return [
+        ".gitlab-ci.yml",
+        `image: python:3.11
+
+stages:
+  - validate
+
+variables:
+  GCP_PROJECT_ID: "\${GCP_PROJECT_ID}"
+
+validate:
+  stage: validate
+  before_script:
+    - pip install dbt-${primaryPlatform === "bigquery" ? "bigquery" : primaryPlatform}
+    - echo "\${GCP_SA_KEY}" > /tmp/sa_key.json
+    - gcloud auth activate-service-account --key-file=/tmp/sa_key.json
+  script:
+    - ${dbtCmd}
+  only:
+    - "${branch}"
+    - merge_requests
+`,
+      ];
+
+    case "bamboo":
+      return [
+        "bamboo-specs/bamboo.yml",
+        `version: 2
+
+plan:
+  project-key: ${projectName.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5) || "PIPE"}
+  key: CI
+  name: "${projectName} CI"
+
+stages:
+  - Validate:
+      manual: false
+      final: false
+      jobs:
+        - Build
+
+Build:
+  key: BUILD
+  tasks:
+    - script:
+        interpreter: SHELL
+        scripts:
+          - pip install dbt-${primaryPlatform === "bigquery" ? "bigquery" : primaryPlatform}
+          - ${dbtCmd}
+  requirements:
+    - python3
+
+triggers:
+  - remote:
+      path: "${branch}"
+`,
+      ];
+
+    case "bitbucket-pipelines":
+      return [
+        "bitbucket-pipelines.yml",
+        `image: python:3.11
+
+pipelines:
+  branches:
+    "${branch}":
+      - step:
+          name: Validate — ${projectName}
+          script:
+            - pip install dbt-${primaryPlatform === "bigquery" ? "bigquery" : primaryPlatform}
+            - echo "\${GCP_SA_KEY}" > /tmp/sa_key.json
+            - gcloud auth activate-service-account --key-file=/tmp/sa_key.json
+            - ${dbtCmd}
+          services:
+            - docker
+
+  pull-requests:
+    "**":
+      - step:
+          name: PR Check
+          script:
+            - pip install dbt-${primaryPlatform === "bigquery" ? "bigquery" : primaryPlatform}
+            - ${dbtCmd}
+`,
+      ];
+
+    default:
+      return null;
+  }
 }
