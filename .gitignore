@@ -6,3 +6,6 @@ graphify-out/
 .env
 .env.local
 .env.production
+*.zip
+tsconfig.tsbuildinfo
+.claude/worktrees/
