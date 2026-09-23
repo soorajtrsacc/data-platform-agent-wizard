@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root { color-scheme: light; }
-body { @apply bg-slate-50 text-slate-900 antialiased; }
+body { @apply bg-sky-50 text-slate-900 antialiased; }
 
 .step-active { @apply border-amber-500 text-amber-600 bg-amber-50; }
 .step-done   { @apply border-emerald-500 text-emerald-600 bg-emerald-50; }
