@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef } from "react";
 import Link from "next/link";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type MigrationType = "code" | "data" | "both";
 
@@ -35,7 +35,7 @@ interface MigrationConfig {
   additionalNotes: string;
 }
 
-// ─── Options ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Options â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const SOURCE_LANGS = [
   { value: "sas", label: "SAS (Base SAS / PROC SQL)" },
@@ -81,9 +81,9 @@ const SOURCE_STORAGE = [
 ];
 
 const TARGET_STORAGE = [
-  { value: "gcs", label: "Google Cloud Storage (GCS) → BigQuery" },
-  { value: "aws-s3", label: "AWS S3 → Redshift / Glue / EMR" },
-  { value: "adls", label: "ADLS Gen2 → Synapse / Fabric" },
+  { value: "gcs", label: "Google Cloud Storage (GCS) â†’ BigQuery" },
+  { value: "aws-s3", label: "AWS S3 â†’ Redshift / Glue / EMR" },
+  { value: "adls", label: "ADLS Gen2 â†’ Synapse / Fabric" },
   { value: "databricks-unity", label: "Databricks Unity Catalog (Delta)" },
   { value: "palantir-foundry", label: "Palantir Foundry Datasets" },
   { value: "snowflake-stage", label: "Snowflake Internal/External Stage" },
@@ -98,7 +98,7 @@ const CLOUD_CLIS = [
   { value: "multiple", label: "Multiple CLIs" },
 ];
 
-// ─── Plan generator ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Plan generator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function generateMigrationClaudeMd(c: MigrationConfig): string {
   const srcLabel = SOURCE_LANGS.find((l) => l.value === c.sourceLanguage)?.label ?? c.sourceLanguage;
@@ -110,7 +110,7 @@ function generateMigrationClaudeMd(c: MigrationConfig): string {
   const dataTransferStrategy = (() => {
     if (c.migrationType === "code") return "";
     if (dataGB < 10) {
-      return `### Data Transfer Strategy — Small Dataset (< 10 GB)
+      return `### Data Transfer Strategy â€” Small Dataset (< 10 GB)
 
 Data volume: **${c.dataVolumeGB || "< 10"} GB**
 
@@ -125,38 +125,38 @@ Recommended approach: **Direct streaming transfer** via ${c.mcpAvailable ? "MCP 
 | 5 | Switch application traffic to new system |
 
 \`\`\`bash
-# Example: on-prem CSV → GCS → BigQuery
+# Example: on-prem CSV â†’ GCS â†’ BigQuery
 gcloud storage cp /data/export/*.csv gs://my-bucket/migration/
 bq load --source_format=CSV --autodetect my_dataset.my_table gs://my-bucket/migration/*.csv
 \`\`\`
 `;
     }
     if (dataGB < 100) {
-      return `### Data Transfer Strategy — Medium Dataset (10–100 GB)
+      return `### Data Transfer Strategy â€” Medium Dataset (10â€“100 GB)
 
 Data volume: **${c.dataVolumeGB} GB**
 
 Recommended approaches (choose one):
 
-**Option A — Parallel batch export + cloud CLI**
-1. Split source data into partitions (by date or key range) — max 5 GB per file.
+**Option A â€” Parallel batch export + cloud CLI**
+1. Split source data into partitions (by date or key range) â€” max 5 GB per file.
 2. Export each partition in parallel (use screen/tmux or a job array).
 3. Upload via \`gsutil -m cp\` / \`aws s3 sync\` / \`az storage blob upload-batch\` for parallel multi-part upload.
 4. Load in bulk via \`COPY INTO\` / \`bq load\` / \`MERGE INTO\`.
 
-**Option B — Database replication / CDC**
+**Option B â€” Database replication / CDC**
 - Use Debezium (Kafka CDC) to stream changes from source to target.
 - Or use cloud DMS: AWS DMS, Google Database Migration Service, Azure Database Migration Service.
 
-**Option C — dbt + external tables**
+**Option C â€” dbt + external tables**
 - Mount source data as external table (e.g., BigQuery External Table over GCS).
 - Run dbt incremental models to hydrate internal tables in batches.
 `;
     }
     // > 100 GB
-    return `### Data Transfer Strategy — Large Dataset (> 100 GB)
+    return `### Data Transfer Strategy â€” Large Dataset (> 100 GB)
 
-Data volume: **${c.dataVolumeGB} GB** — Direct network transfer not recommended at this scale.
+Data volume: **${c.dataVolumeGB} GB** â€” Direct network transfer not recommended at this scale.
 
 **Recommended approaches:**
 
@@ -168,14 +168,14 @@ Data volume: **${c.dataVolumeGB} GB** — Direct network transfer not recommende
 | Azure | **Azure Data Box** | 100 TB device; ruggedised; order at portal.azure.com |
 
 Steps:
-1. Order appliance from cloud console (7–14 day delivery typically).
+1. Order appliance from cloud console (7â€“14 day delivery typically).
 2. Connect to on-prem network; export data to device using vendor client.
 3. Ship device to cloud provider's data centre.
 4. Cloud copies data to your designated bucket/container automatically.
 5. Validate checksums, then load into target tables.
 
 #### 2. Batch Export with Compression + Resumable Upload
-- Compress with \`gzip\` or \`zstd\` (achieves 3–10× compression on tabular data).
+- Compress with \`gzip\` or \`zstd\` (achieves 3â€“10Ã— compression on tabular data).
 - Use resumable/multipart upload protocols: \`gsutil -o GSUtil:parallel_composite_upload_threshold=150M\`.
 - Schedule exports in off-peak hours to avoid source system load.
 
@@ -207,7 +207,7 @@ MIGRATE <source_file_path> FROM ${c.sourceLanguage} TO ${c.targetLanguage}
 \`\`\`
 
 #### Step-by-Step Process
-1. **Parse** the source file — identify SQL blocks, procedural logic, UDFs, and data flows.
+1. **Parse** the source file â€” identify SQL blocks, procedural logic, UDFs, and data flows.
 2. **Extract** business logic: joins, filters, transformations, aggregations.
 3. **Map** source constructs to target equivalents (see translation table below).
 4. **Generate** target file with lineage comment block at the top.
@@ -224,17 +224,17 @@ Use these as reference inputs for the MIGRATE command.
 ` : "";
 
   const mcpSection = c.mcpAvailable
-    ? `## Cloud Access Mode — MCP Active
+    ? `## Cloud Access Mode â€” MCP Active
 Connect via MCP for direct cloud API access. No CLI commands needed for routine operations.`
-    : `## Cloud Access Mode — CLI Mode
+    : `## Cloud Access Mode â€” CLI Mode
 MCP is not configured. Use ${c.cloudCli ? CLOUD_CLIS.find((x) => x.value === c.cloudCli)?.label ?? c.cloudCli : "the appropriate cloud CLI"} for all cloud operations. Ensure you are authenticated before proceeding.`;
 
-  return `# Migration Assistant — ${c.projectName || "Migration Project"}
+  return `# Migration Assistant â€” ${c.projectName || "Migration Project"}
 
 **Generated:** ${new Date().toISOString()}
 
 ## Scope
-${c.migrationType === "code" ? "Code migration only (no data transfer)" : c.migrationType === "data" ? "Data transfer only (no code changes)" : "Full migration — code + data"}
+${c.migrationType === "code" ? "Code migration only (no data transfer)" : c.migrationType === "data" ? "Data transfer only (no code changes)" : "Full migration â€” code + data"}
 
 ---
 
@@ -284,7 +284,7 @@ function generateMigrationRules(c: MigrationConfig): string {
 | \`DECODE()\` | \`CASE WHEN\` |
 | \`ROWNUM\` | \`ROW_NUMBER() OVER (...)\` |
 | \`SYSDATE\` | \`CURRENT_DATE()\` |
-| \`DUAL\` | Remove — not needed |
+| \`DUAL\` | Remove â€” not needed |
 | Cursor loop | Set-based SQL or dbt incremental |
 | \`DBMS_OUTPUT\` | Remove or replace with logging |
 | DB link | External table or federated query |
@@ -297,7 +297,7 @@ function generateMigrationRules(c: MigrationConfig): string {
 | \`QUALIFY ROW_NUMBER()\` | Window subquery |
 | \`VOLATILE TABLE\` | CTE or \`CREATE TEMP TABLE\` |
 | \`COMPRESS\` | Remove |
-| FastExport → CSV | \`bq extract\` |
+| FastExport â†’ CSV | \`bq extract\` |
 | MLoad upsert | \`MERGE INTO\` |
 | \`.LOGON\` | Python connector or bq CLI |
 | \`.RUN FILE\` | Subprocess or dbt CLI |`,
@@ -326,9 +326,9 @@ function generateMigrationRules(c: MigrationConfig): string {
   const altKey = `${c.sourceLanguage}-${c.targetLanguage.split("-")[0]}`;
   const table = tables[key] ?? tables[altKey] ?? `| Source Construct | Target Equivalent |
 |-----------------|-------------------|
-| (custom — review source files) | (derive from business logic) |`;
+| (custom â€” review source files) | (derive from business logic) |`;
 
-  return `# Migration Rules: ${srcLabel} → ${tgtLabel}
+  return `# Migration Rules: ${srcLabel} â†’ ${tgtLabel}
 
 ## Translation Table
 
@@ -345,7 +345,7 @@ Add to every migrated file:
 \`\`\`
 
 ## Validation Checklist
-- [ ] Row count matches source (±0.01%)
+- [ ] Row count matches source (Â±0.01%)
 - [ ] Checksum / hash on key columns matches
 - [ ] Null count per column matches
 - [ ] Business query results match (sample 10 queries)
@@ -354,7 +354,7 @@ Add to every migrated file:
 `;
 }
 
-// ─── Wizard ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Wizard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const TOTAL = 4;
 
@@ -413,7 +413,7 @@ export default function MigrationPage() {
       for (const f of c.sampleFileContents) {
         zip.file(`docs/samples/${f.name}`, f.content);
       }
-      zip.file("README.md", `# ${c.projectName || "Migration"} — Claude Code Agent\n\nGenerated by Migration Assistant.\n`);
+      zip.file("README.md", `# ${c.projectName || "Migration"} â€” Claude Code Agent\n\nGenerated by Migration Assistant.\n`);
       const blob = await zip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -427,10 +427,10 @@ export default function MigrationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 p-4 md:p-8">
+    <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
-          <Link href="/" className="text-gray-500 hover:text-gray-300 text-sm">← Home</Link>
+          <Link href="/" className="text-slate-500 hover:text-slate-700 text-sm">â† Home</Link>
           <h1 className="text-2xl font-bold">Migration Assistant</h1>
         </div>
 
@@ -443,11 +443,11 @@ export default function MigrationPage() {
               <div key={n} className="flex items-center gap-1">
                 <div className={`step-${state} flex items-center gap-1.5`}>
                   <span className="w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold border border-current">
-                    {state === "done" ? "✓" : n}
+                    {state === "done" ? "âœ“" : n}
                   </span>
                   <span className="text-xs hidden sm:inline">{label}</span>
                 </div>
-                {i < 3 && <div className="w-4 h-px bg-gray-600" />}
+                {i < 3 && <div className="w-4 h-px bg-slate-300" />}
               </div>
             );
           })}
@@ -457,7 +457,7 @@ export default function MigrationPage() {
           {/* Step 1: Migration Type */}
           {step === 1 && (
             <>
-              <h2 className="text-xl font-semibold">Step 1 — Migration Type</h2>
+              <h2 className="text-xl font-semibold">Step 1 â€” Migration Type</h2>
               <div>
                 <label className="label">Project Name</label>
                 <input className="input" placeholder="e.g. teradata-to-bigquery-migration" value={c.projectName}
@@ -468,13 +468,13 @@ export default function MigrationPage() {
                 <div className="grid grid-cols-3 gap-3">
                   {([
                     { value: "code", label: "Code Only", desc: "SQL / ETL scripts, stored procedures, notebooks" },
-                    { value: "data", label: "Data Only", desc: "Tables, files, datasets — no code changes" },
-                    { value: "both", label: "Code + Data", desc: "Full migration — code rewrite and data transfer" },
+                    { value: "data", label: "Data Only", desc: "Tables, files, datasets â€” no code changes" },
+                    { value: "both", label: "Code + Data", desc: "Full migration â€” code rewrite and data transfer" },
                   ] as { value: MigrationType; label: string; desc: string }[]).map((opt) => (
                     <button key={opt.value} onClick={() => update("migrationType", opt.value)}
                       className={`card text-left transition-colors ${c.migrationType === opt.value ? "border-purple-500" : ""}`}>
                       <div className="font-medium text-sm mb-1">{opt.label}</div>
-                      <div className="text-xs text-gray-400">{opt.desc}</div>
+                      <div className="text-xs text-slate-500">{opt.desc}</div>
                     </button>
                   ))}
                 </div>
@@ -499,9 +499,9 @@ export default function MigrationPage() {
           {/* Step 2: Code Migration */}
           {step === 2 && (
             <>
-              <h2 className="text-xl font-semibold">Step 2 — Code Migration</h2>
+              <h2 className="text-xl font-semibold">Step 2 â€” Code Migration</h2>
               {c.migrationType === "data" && (
-                <div className="card bg-gray-800/50 text-gray-400 text-sm">
+                <div className="card  text-slate-500 text-sm">
                   Code migration skipped (Data Only mode). Click Next to proceed to data transfer.
                 </div>
               )}
@@ -524,13 +524,13 @@ export default function MigrationPage() {
                   <div>
                     <label className="label">Source Notes</label>
                     <textarea className="input min-h-[80px]"
-                      placeholder="Any specifics about the source codebase — version, patterns, custom constructs, number of scripts…"
+                      placeholder="Any specifics about the source codebase â€” version, patterns, custom constructs, number of scriptsâ€¦"
                       value={c.sourceNotes} onChange={(e) => update("sourceNotes", e.target.value)} />
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <label className="label mb-0">Sample Source Files
-                        <span className="text-gray-500 font-normal ml-1">(optional — used as migration reference)</span>
+                        <span className="text-slate-400 font-normal ml-1">(optional â€” used as migration reference)</span>
                       </label>
                       <button className="btn-secondary text-xs" onClick={() => fileRef.current?.click()}>+ Attach scripts</button>
                       <input ref={fileRef} type="file" multiple accept=".sql,.py,.sas,.sh,.bteq,.ksh,.pl,.java,.scala" className="hidden"
@@ -546,7 +546,7 @@ export default function MigrationPage() {
                                 ...p,
                                 sampleFileNames: p.sampleFileNames.filter((_, j) => j !== i),
                                 sampleFileContents: p.sampleFileContents.filter((_, j) => j !== i),
-                              }))}>✕</button>
+                              }))}>âœ•</button>
                           </span>
                         ))}
                       </div>
@@ -560,9 +560,9 @@ export default function MigrationPage() {
           {/* Step 3: Data Transfer */}
           {step === 3 && (
             <>
-              <h2 className="text-xl font-semibold">Step 3 — Data Transfer</h2>
+              <h2 className="text-xl font-semibold">Step 3 â€” Data Transfer</h2>
               {c.migrationType === "code" && (
-                <div className="card bg-gray-800/50 text-gray-400 text-sm">
+                <div className="card  text-slate-500 text-sm">
                   Data transfer skipped (Code Only mode). Click Next to export.
                 </div>
               )}
@@ -602,19 +602,19 @@ export default function MigrationPage() {
                       {c.dataVolumePart === "small" && (
                         <>
                           <div className="font-semibold text-green-400 mb-1">Recommended: Direct streaming transfer</div>
-                          <div className="text-gray-300">Under 10 GB — direct CLI or MCP upload to cloud storage, then bulk load. Fast and simple.</div>
+                          <div className="text-slate-700">Under 10 GB â€” direct CLI or MCP upload to cloud storage, then bulk load. Fast and simple.</div>
                         </>
                       )}
                       {c.dataVolumePart === "medium" && (
                         <>
                           <div className="font-semibold text-yellow-400 mb-1">Recommended: Parallel batch export</div>
-                          <div className="text-gray-300">10–100 GB — split into partitions, parallel upload, bulk load. Or use cloud DMS for online replication.</div>
+                          <div className="text-slate-700">10â€“100 GB â€” split into partitions, parallel upload, bulk load. Or use cloud DMS for online replication.</div>
                         </>
                       )}
                       {c.dataVolumePart === "large" && (
                         <>
                           <div className="font-semibold text-red-400 mb-1">Recommended: Physical transfer device or Direct Connect</div>
-                          <div className="text-gray-300">Over 100 GB — use AWS Snowball, Google Transfer Appliance, or Azure Data Box. Then CDC for ongoing delta.</div>
+                          <div className="text-slate-700">Over 100 GB â€” use AWS Snowball, Google Transfer Appliance, or Azure Data Box. Then CDC for ongoing delta.</div>
                         </>
                       )}
                     </div>
@@ -622,7 +622,7 @@ export default function MigrationPage() {
 
                   <div>
                     <label className="label">Data Transfer Notes</label>
-                    <textarea className="input min-h-[80px]" placeholder="Schema details, partition keys, PII considerations, SLA requirements…"
+                    <textarea className="input min-h-[80px]" placeholder="Schema details, partition keys, PII considerations, SLA requirementsâ€¦"
                       value={c.dataNotes} onChange={(e) => update("dataNotes", e.target.value)} />
                   </div>
                 </>
@@ -633,31 +633,31 @@ export default function MigrationPage() {
           {/* Step 4: Export */}
           {step === 4 && (
             <>
-              <h2 className="text-xl font-semibold">Step 4 — Review &amp; Export</h2>
-              <div className="card bg-gray-800/50 border border-gray-700">
+              <h2 className="text-xl font-semibold">Step 4 â€” Review &amp; Export</h2>
+              <div className="card  border border-slate-300">
                 <h3 className="font-semibold mb-3">Migration Bundle Summary</h3>
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="text-gray-400">Project</div><div>{c.projectName || "—"}</div>
-                  <div className="text-gray-400">Migration Type</div>
+                  <div className="text-slate-500">Project</div><div>{c.projectName || "â€”"}</div>
+                  <div className="text-slate-500">Migration Type</div>
                   <div className="capitalize">{c.migrationType === "both" ? "Code + Data" : c.migrationType}</div>
                   {c.migrationType !== "data" && (
                     <>
-                      <div className="text-gray-400">Source</div>
+                      <div className="text-slate-500">Source</div>
                       <div>{SOURCE_LANGS.find((l) => l.value === c.sourceLanguage)?.label ?? c.sourceLanguage}</div>
-                      <div className="text-gray-400">Target</div>
+                      <div className="text-slate-500">Target</div>
                       <div>{TARGET_LANGS.find((l) => l.value === c.targetLanguage)?.label ?? c.targetLanguage}</div>
-                      <div className="text-gray-400">Sample files</div><div>{c.sampleFileNames.length}</div>
+                      <div className="text-slate-500">Sample files</div><div>{c.sampleFileNames.length}</div>
                     </>
                   )}
                   {c.migrationType !== "code" && (
                     <>
-                      <div className="text-gray-400">Data Volume</div>
-                      <div>{c.dataVolumeGB ? `${c.dataVolumeGB} GB` : "—"}</div>
-                      <div className="text-gray-400">Transfer Strategy</div>
+                      <div className="text-slate-500">Data Volume</div>
+                      <div>{c.dataVolumeGB ? `${c.dataVolumeGB} GB` : "â€”"}</div>
+                      <div className="text-slate-500">Transfer Strategy</div>
                       <div className="capitalize">{c.dataVolumePart === "small" ? "Direct streaming" : c.dataVolumePart === "medium" ? "Batch export" : "Transfer device / Direct Connect"}</div>
                     </>
                   )}
-                  <div className="text-gray-400">Cloud Access</div>
+                  <div className="text-slate-500">Cloud Access</div>
                   <div>{c.mcpAvailable ? "MCP (active)" : `CLI (${c.cloudCli})`}</div>
                 </div>
               </div>
@@ -665,12 +665,12 @@ export default function MigrationPage() {
               <div>
                 <label className="label">Additional Notes for Claude Code</label>
                 <textarea className="input min-h-[100px]"
-                  placeholder="Anything else the agent should know — constraints, priorities, deadlines, stakeholder requirements…"
+                  placeholder="Anything else the agent should know â€” constraints, priorities, deadlines, stakeholder requirementsâ€¦"
                   value={c.additionalNotes} onChange={(e) => update("additionalNotes", e.target.value)} />
               </div>
 
               <button className="btn-primary w-full text-lg py-3" onClick={handleExport} disabled={exporting}>
-                {exporting ? "Generating…" : "Download Migration Workspace Bundle (.zip)"}
+                {exporting ? "Generatingâ€¦" : "Download Migration Workspace Bundle (.zip)"}
               </button>
             </>
           )}
@@ -678,16 +678,16 @@ export default function MigrationPage() {
 
         <div className="flex justify-between">
           {step > 1 ? (
-            <button className="btn-secondary" onClick={() => setStep((s) => s - 1)}>← Back</button>
+            <button className="btn-secondary" onClick={() => setStep((s) => s - 1)}>â† Back</button>
           ) : (
-            <Link href="/" className="btn-secondary">← Home</Link>
+            <Link href="/" className="btn-secondary">â† Home</Link>
           )}
           {step < TOTAL && (
-            <button className="btn-primary" onClick={() => setStep((s) => s + 1)}>Next →</button>
+            <button className="btn-primary" onClick={() => setStep((s) => s + 1)}>Next â†’</button>
           )}
           {step === TOTAL && (
             <button className="btn-primary" onClick={handleExport} disabled={exporting}>
-              {exporting ? "Generating…" : "Download ZIP"}
+              {exporting ? "Generatingâ€¦" : "Download ZIP"}
             </button>
           )}
         </div>
@@ -695,3 +695,4 @@ export default function MigrationPage() {
     </div>
   );
 }
+

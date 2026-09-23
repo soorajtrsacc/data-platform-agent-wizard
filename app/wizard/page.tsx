@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useCallback } from "react";
 import Papa from "papaparse";
@@ -15,7 +15,7 @@ import type {
   RepoConfig,
 } from "../../lib/compiler";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const TOTAL_STEPS = 8;
 
@@ -29,8 +29,8 @@ const PLATFORM_OPTIONS = [
   { value: "fabric", label: "Microsoft Fabric (Lakehouse / Warehouse)" },
   { value: "dbt", label: "dbt Core / dbt Cloud" },
   { value: "pyspark", label: "PySpark (EMR / Dataproc / HDInsight)" },
-  { value: "teradata", label: "Teradata (BTEQ / FastExport) — migration source" },
-  { value: "oracle", label: "Oracle Database (PL/SQL) — migration source" },
+  { value: "teradata", label: "Teradata (BTEQ / FastExport) â€” migration source" },
+  { value: "oracle", label: "Oracle Database (PL/SQL) â€” migration source" },
   { value: "sqlserver", label: "SQL Server / SSAS (T-SQL)" },
   { value: "postgres", label: "PostgreSQL (PL/pgSQL)" },
 ];
@@ -159,7 +159,7 @@ const MCP_PRESETS: Partial<McpServer>[] = [
   },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const uid = () => Math.random().toString(36).slice(2, 8);
 
@@ -238,8 +238,8 @@ async function parseMappingFile(file: File): Promise<MappingRow[]> {
     const ws = wb.Sheets[wb.SheetNames[0]];
     return XLSX.utils.sheet_to_json<MappingRow>(ws, { defval: "" });
   }
-  // Word / PDF / Markdown — return as single raw-text row
-  const text = await file.text().catch(() => "(binary — parsed at runtime)");
+  // Word / PDF / Markdown â€” return as single raw-text row
+  const text = await file.text().catch(() => "(binary â€” parsed at runtime)");
   return [{ _raw: text.slice(0, 2000), _file: file.name }];
 }
 
@@ -254,7 +254,7 @@ async function fileToAttachedDoc(file: File): Promise<AttachedDoc> {
   });
 }
 
-// ─── Reusable section document uploader ───────────────────────────────────────
+// â”€â”€â”€ Reusable section document uploader â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function SectionDocUpload({
   section, c, setC,
@@ -279,14 +279,14 @@ function SectionDocUpload({
     setC((p) => ({ ...p, sectionDocs: { ...p.sectionDocs, [section]: (p.sectionDocs?.[section] ?? []).filter((_, i) => i !== idx) } }));
 
   return (
-    <div className="border border-gray-700 rounded-lg p-3 bg-gray-900/40">
+    <div className="border border-slate-200 rounded-lg p-3 bg-slate-50">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-gray-400 font-medium">
+        <span className="text-xs text-slate-500 font-medium">
           Section Reference Documents
-          <span className="font-normal ml-1 text-gray-500">(PDF, Word, Excel, Markdown — bundled in ZIP)</span>
+          <span className="font-normal ml-1 text-slate-400">(PDF, Word, Excel, Markdown â€” bundled in ZIP)</span>
         </span>
         <button className="btn-secondary text-xs py-0.5" onClick={() => ref.current?.click()}>
-          {adding ? "Uploading…" : "+ Attach"}
+          {adding ? "Uploadingâ€¦" : "+ Attach"}
         </button>
         <input ref={ref} type="file" multiple accept=".pdf,.docx,.doc,.md,.txt,.xlsx,.xls" className="hidden"
           onChange={(e) => handleFiles(e.target.files)} />
@@ -298,7 +298,7 @@ function SectionDocUpload({
           {docs.map((d, i) => (
             <span key={i} className="tag text-xs flex items-center gap-1">
               {d.name}
-              <button className="opacity-60 hover:opacity-100" onClick={() => onRemove(i)}>✕</button>
+              <button className="opacity-60 hover:opacity-100" onClick={() => onRemove(i)}>âœ•</button>
             </span>
           ))}
         </div>
@@ -307,7 +307,7 @@ function SectionDocUpload({
   );
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function StepIndicator({ current }: { current: number }) {
   const labels = [
@@ -323,11 +323,11 @@ function StepIndicator({ current }: { current: number }) {
           <div key={n} className="flex items-center gap-1">
             <div className={`step-${state} flex items-center gap-1.5`}>
               <span className="w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold border border-current">
-                {state === "done" ? "✓" : n}
+                {state === "done" ? "âœ“" : n}
               </span>
               <span className="text-xs hidden sm:inline">{label}</span>
             </div>
-            {i < labels.length - 1 && <div className="w-4 h-px bg-gray-600" />}
+            {i < labels.length - 1 && <div className="w-4 h-px bg-slate-300" />}
           </div>
         );
       })}
@@ -335,7 +335,7 @@ function StepIndicator({ current }: { current: number }) {
   );
 }
 
-// ─── Steps ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Steps â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function Step1({
   c, setC,
@@ -378,7 +378,7 @@ function Step1({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Step 1 — Project Setup</h2>
+      <h2 className="text-xl font-semibold">Step 1 â€” Project Setup</h2>
 
       <div>
         <label className="label">Project Name</label>
@@ -388,23 +388,23 @@ function Step1({
 
       <div>
         <label className="label">Architecture Notes
-          <span className="text-gray-500 font-normal ml-2">— describe the overall architecture, patterns, constraints</span>
+          <span className="text-slate-400 font-normal ml-2">â€” describe the overall architecture, patterns, constraints</span>
         </label>
-        <textarea className="input min-h-[120px]" placeholder="e.g. Medallion architecture on Palantir Foundry + BigQuery. Raw data ingested from Kafka topics…"
+        <textarea className="input min-h-[120px]" placeholder="e.g. Medallion architecture on Palantir Foundry + BigQuery. Raw data ingested from Kafka topicsâ€¦"
           value={c.architectureNotes}
           onChange={(e) => setC((p) => ({ ...p, architectureNotes: e.target.value }))} />
       </div>
 
       <div>
         <label className="label">AI Coding Agent(s)
-          <span className="text-gray-500 font-normal ml-2">— select all agents you want to configure</span>
+          <span className="text-slate-400 font-normal ml-2">â€” select all agents you want to configure</span>
         </label>
         <div className="grid grid-cols-2 gap-2 mt-2">
           {AGENT_OPTIONS.map((opt) => {
             const checked = (c.agents ?? []).includes(opt.value);
             return (
               <label key={opt.value} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
-                checked ? "border-blue-500 bg-blue-950/30" : "border-gray-700 hover:border-gray-500"
+                checked ? "border-blue-500 bg-blue-50" : "border-slate-300 hover:border-slate-400"
               }`}>
                 <input
                   type="checkbox"
@@ -419,7 +419,7 @@ function Step1({
                   }}
                 />
                 <span className="text-sm font-medium">{opt.label}</span>
-                <span className="text-xs text-gray-500 ml-auto">{opt.note}</span>
+                <span className="text-xs text-slate-400 ml-auto">{opt.note}</span>
               </label>
             );
           })}
@@ -438,7 +438,7 @@ function Step1({
                 onChange={(e) => updateEnv(env.id, "name", e.target.value)} />
               <input className="input flex-1" placeholder="notes (optional)" value={env.notes}
                 onChange={(e) => updateEnv(env.id, "notes", e.target.value)} />
-              <button className="btn-secondary text-xs px-2 mt-1" onClick={() => removeEnv(env.id)}>✕</button>
+              <button className="btn-secondary text-xs px-2 mt-1" onClick={() => removeEnv(env.id)}>âœ•</button>
             </div>
           ))}
         </div>
@@ -447,7 +447,7 @@ function Step1({
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="label mb-0">Attach Project Documents
-            <span className="text-gray-500 font-normal ml-2">— PDF, Word (.docx), Markdown, Excel (.xlsx)</span>
+            <span className="text-slate-400 font-normal ml-2">â€” PDF, Word (.docx), Markdown, Excel (.xlsx)</span>
           </label>
           <button className="btn-secondary text-xs" onClick={() => docRef.current?.click()}>+ Attach files</button>
           <input ref={docRef} type="file" multiple accept=".pdf,.docx,.doc,.md,.txt,.xlsx,.xls" className="hidden"
@@ -459,7 +459,7 @@ function Step1({
               <span key={i} className="tag flex items-center gap-1">
                 {d.name}
                 <button className="ml-1 opacity-60 hover:opacity-100" onClick={() =>
-                  setC((p) => ({ ...p, documents: p.documents.filter((_, j) => j !== i) }))}>✕</button>
+                  setC((p) => ({ ...p, documents: p.documents.filter((_, j) => j !== i) }))}>âœ•</button>
               </span>
             ))}
           </div>
@@ -484,12 +484,12 @@ function Step2({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Step 2 — Platforms & Cloud Targets</h2>
-      <p className="text-sm text-gray-400">Add every platform Claude Code will generate code for. You can have multiple platforms across different clouds.</p>
+      <h2 className="text-xl font-semibold">Step 2 â€” Platforms & Cloud Targets</h2>
+      <p className="text-sm text-slate-500">Add every platform Claude Code will generate code for. You can have multiple platforms across different clouds.</p>
 
       <div className="space-y-4">
         {c.platforms.length === 0 && (
-          <div className="text-gray-500 text-sm italic">No platforms added yet.</div>
+          <div className="text-slate-400 text-sm italic">No platforms added yet.</div>
         )}
         {c.platforms.map((p) => (
           <div key={p.id} className="card space-y-3">
@@ -526,7 +526,7 @@ function Step2({
             </div>
             <div>
               <label className="label text-xs">Platform Notes</label>
-              <input className="input" placeholder="Any platform-specific notes for Claude Code…" value={p.notes}
+              <input className="input" placeholder="Any platform-specific notes for Claude Codeâ€¦" value={p.notes}
                 onChange={(e) => updatePlatform(p.id, "notes", e.target.value)} />
             </div>
           </div>
@@ -566,14 +566,14 @@ function Step3({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Step 3 — Data Layer Architecture</h2>
-      <p className="text-sm text-gray-400">
-        Define your data layers in order. Names are completely flexible — not limited to Bronze/Silver/Gold.
-        Use <code className="text-xs bg-gray-800 px-1 rounded">{"{env}"}</code> in path templates to insert the active environment.
+      <h2 className="text-xl font-semibold">Step 3 â€” Data Layer Architecture</h2>
+      <p className="text-sm text-slate-500">
+        Define your data layers in order. Names are completely flexible â€” not limited to Bronze/Silver/Gold.
+        Use <code className="text-xs bg-slate-100 px-1 rounded">{"{env}"}</code> in path templates to insert the active environment.
       </p>
 
       <div className="flex flex-wrap gap-1 mb-2">
-        <span className="text-xs text-gray-500 mr-1">Quick add:</span>
+        <span className="text-xs text-slate-400 mr-1">Quick add:</span>
         {PRESETS.map((name) => (
           <button key={name} className="tag cursor-pointer hover:opacity-80 text-xs" onClick={() =>
             setC((p) => ({
@@ -590,25 +590,25 @@ function Step3({
 
       <div className="space-y-4">
         {c.layers.length === 0 && (
-          <div className="text-gray-500 text-sm italic">No layers added yet. Click quick-add or + Add Layer.</div>
+          <div className="text-slate-400 text-sm italic">No layers added yet. Click quick-add or + Add Layer.</div>
         )}
         {c.layers.map((layer, idx) => (
           <div key={layer.id} className="card space-y-3">
             <div className="flex justify-between items-center">
-              <span className="font-medium text-sm text-gray-400">Layer {idx + 1}</span>
+              <span className="font-medium text-sm text-slate-500">Layer {idx + 1}</span>
               <button className="btn-secondary text-xs" onClick={() => removeLayer(layer.id)}>Remove</button>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label text-xs">Layer Name</label>
-                <input className="input" placeholder="e.g. Bronze, Landing, Mart…" value={layer.name}
+                <input className="input" placeholder="e.g. Bronze, Landing, Martâ€¦" value={layer.name}
                   onChange={(e) => updateLayer(layer.id, "name", e.target.value)} />
               </div>
               <div>
                 <label className="label text-xs">Platform</label>
                 <select className="input" value={layer.platformId}
                   onChange={(e) => updateLayer(layer.id, "platformId", e.target.value)}>
-                  <option value="">— select —</option>
+                  <option value="">â€” select â€”</option>
                   {c.platforms.map((p) => (
                     <option key={p.id} value={p.id}>
                       {PLATFORM_OPTIONS.find((o) => o.value === p.platform)?.label ?? p.platform}
@@ -618,7 +618,7 @@ function Step3({
               </div>
               <div className="col-span-2">
                 <label className="label text-xs">Path Template
-                  <span className="text-gray-500 ml-1 font-normal">— use {"{env}"} for environment substitution</span>
+                  <span className="text-slate-400 ml-1 font-normal">â€” use {"{env}"} for environment substitution</span>
                 </label>
                 <input className="input" placeholder="e.g. my_project.silver_{env} or s3://bucket/{env}/silver/"
                   value={layer.pathTemplate} onChange={(e) => updateLayer(layer.id, "pathTemplate", e.target.value)} />
@@ -638,7 +638,7 @@ function Step3({
       <div>
         <label className="label">Layer Architecture Notes</label>
         <textarea className="input min-h-[80px]"
-          placeholder="Data flow, retention policies, quality expectations across layers…"
+          placeholder="Data flow, retention policies, quality expectations across layersâ€¦"
           value={c.layerNotes} onChange={(e) => setC((p) => ({ ...p, layerNotes: e.target.value }))} />
       </div>
 
@@ -661,12 +661,12 @@ function Step4({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Step 4 — Source Systems</h2>
-      <p className="text-sm text-gray-400">Define where data originates. Mark legacy sources to unlock migration translation rules.</p>
+      <h2 className="text-xl font-semibold">Step 4 â€” Source Systems</h2>
+      <p className="text-sm text-slate-500">Define where data originates. Mark legacy sources to unlock migration translation rules.</p>
 
       <div className="space-y-4">
         {c.sources.length === 0 && (
-          <div className="text-gray-500 text-sm italic">No sources added yet.</div>
+          <div className="text-slate-400 text-sm italic">No sources added yet.</div>
         )}
         {c.sources.map((src) => (
           <div key={src.id} className="card space-y-3">
@@ -709,7 +709,7 @@ function Step4({
               )}
               <div className={src.isLegacy ? "" : "col-span-2"}>
                 <label className="label text-xs">Connection / Integration Notes</label>
-                <input className="input" placeholder="Schema, credentials method, ingestion frequency…" value={src.connectionNotes}
+                <input className="input" placeholder="Schema, credentials method, ingestion frequencyâ€¦" value={src.connectionNotes}
                   onChange={(e) => updateSource(src.id, "connectionNotes", e.target.value)} />
               </div>
             </div>
@@ -722,7 +722,7 @@ function Step4({
       <div>
         <label className="label">Source Integration Notes</label>
         <textarea className="input min-h-[80px]"
-          placeholder="Network access, VPN requirements, auth patterns, ingestion cadence…"
+          placeholder="Network access, VPN requirements, auth patterns, ingestion cadenceâ€¦"
           value={c.sourceNotes} onChange={(e) => setC((p) => ({ ...p, sourceNotes: e.target.value }))} />
       </div>
 
@@ -755,17 +755,17 @@ function Step5({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Step 5 — Mapping Sheets</h2>
-      <p className="text-sm text-gray-400">
+      <h2 className="text-xl font-semibold">Step 5 â€” Mapping Sheets</h2>
+      <p className="text-sm text-slate-500">
         Upload source-to-target mapping documents. Supported: CSV, Excel (.xlsx/.xls), Word (.docx), PDF, Markdown.
       </p>
 
-      <div className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center"
+      <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}>
-        <p className="text-gray-400 mb-3">Drag &amp; drop files here or</p>
+        <p className="text-slate-500 mb-3">Drag &amp; drop files here or</p>
         <button className="btn-secondary" onClick={() => fileRef.current?.click()}>
-          {parsing ? "Parsing…" : "Browse Files"}
+          {parsing ? "Parsingâ€¦" : "Browse Files"}
         </button>
         <input ref={fileRef} type="file" multiple accept=".csv,.xlsx,.xls,.docx,.doc,.pdf,.md,.txt"
           className="hidden" onChange={(e) => handleFiles(e.target.files)} />
@@ -778,11 +778,11 @@ function Step5({
               <span key={i} className="tag flex items-center gap-1">
                 {name}
                 <button className="ml-1 opacity-60 hover:opacity-100" onClick={() =>
-                  setC((p) => ({ ...p, mappingFileNames: p.mappingFileNames.filter((_, j) => j !== i) }))}>✕</button>
+                  setC((p) => ({ ...p, mappingFileNames: p.mappingFileNames.filter((_, j) => j !== i) }))}>âœ•</button>
               </span>
             ))}
           </div>
-          <p className="text-xs text-gray-400">{c.mappingRows.length} rows parsed</p>
+          <p className="text-xs text-slate-500">{c.mappingRows.length} rows parsed</p>
         </div>
       )}
 
@@ -790,18 +790,18 @@ function Step5({
         <div className="overflow-x-auto">
           <table className="text-xs w-full border-collapse">
             <thead>
-              <tr>{keys.map((k) => <th key={k} className="text-left p-2 border border-gray-700 text-gray-400">{k}</th>)}</tr>
+              <tr>{keys.map((k) => <th key={k} className="text-left p-2 border border-slate-300 text-slate-500">{k}</th>)}</tr>
             </thead>
             <tbody>
               {c.mappingRows.slice(0, 5).map((row, i) => (
                 <tr key={i}>
-                  {keys.map((k) => <td key={k} className="p-2 border border-gray-700 text-gray-300">{String(row[k] ?? "")}</td>)}
+                  {keys.map((k) => <td key={k} className="p-2 border border-slate-300 text-slate-600">{String(row[k] ?? "")}</td>)}
                 </tr>
               ))}
             </tbody>
           </table>
           {c.mappingRows.length > 5 && (
-            <p className="text-xs text-gray-500 mt-1">… and {c.mappingRows.length - 5} more rows</p>
+            <p className="text-xs text-slate-400 mt-1">â€¦ and {c.mappingRows.length - 5} more rows</p>
           )}
         </div>
       )}
@@ -833,23 +833,23 @@ function McpConnectivityTest({ srv }: { srv: McpServer }) {
     setDetail("");
     if (srv.transport === "stdio") {
       setStatus("info");
-      setDetail(`stdio servers run locally — verify by running:\n${srv.command ?? "?"} ${(srv.args ?? []).join(" ")}`);
+      setDetail(`stdio servers run locally â€” verify by running:\n${srv.command ?? "?"} ${(srv.args ?? []).join(" ")}`);
       return;
     }
     const url = srv.url ?? "";
     if (!url || url.includes("${")) {
       setStatus("info");
-      setDetail("URL contains a variable placeholder — resolve it first, then test.");
+      setDetail("URL contains a variable placeholder â€” resolve it first, then test.");
       return;
     }
     try {
       const res = await fetch(url, { method: "GET", signal: AbortSignal.timeout(5000) });
       if (res.ok || res.status === 405 || res.status === 404) {
         setStatus("ok");
-        setDetail(`HTTP ${res.status} — server reachable`);
+        setDetail(`HTTP ${res.status} â€” server reachable`);
       } else {
         setStatus("fail");
-        setDetail(`HTTP ${res.status} — check URL and auth`);
+        setDetail(`HTTP ${res.status} â€” check URL and auth`);
       }
     } catch (e) {
       setStatus("fail");
@@ -864,19 +864,19 @@ function McpConnectivityTest({ srv }: { srv: McpServer }) {
           status === "ok" ? "border-green-600 text-green-400 bg-green-950/20" :
           status === "fail" ? "border-red-600 text-red-400 bg-red-950/20" :
           status === "info" ? "border-yellow-600 text-yellow-400 bg-yellow-950/20" :
-          status === "testing" ? "border-gray-600 text-gray-400 animate-pulse" :
-          "border-gray-600 text-gray-400 hover:border-blue-500 hover:text-blue-400"
+          status === "testing" ? "border-slate-300 text-slate-500 animate-pulse" :
+          "border-slate-300 text-slate-500 hover:border-blue-500 hover:text-blue-400"
         }`}
         onClick={test}
         disabled={status === "testing"}
       >
         {status === "idle" && "Test connectivity"}
-        {status === "testing" && "Testing…"}
-        {status === "ok" && "✓ Connected"}
-        {status === "fail" && "✗ Failed"}
-        {status === "info" && "ℹ stdio"}
+        {status === "testing" && "Testingâ€¦"}
+        {status === "ok" && "âœ“ Connected"}
+        {status === "fail" && "âœ— Failed"}
+        {status === "info" && "â„¹ stdio"}
       </button>
-      {detail && <pre className="text-xs text-gray-400 whitespace-pre-wrap">{detail}</pre>}
+      {detail && <pre className="text-xs text-slate-500 whitespace-pre-wrap">{detail}</pre>}
     </div>
   );
 }
@@ -921,8 +921,8 @@ function Step6({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Step 6 — MCP Server Connections</h2>
-      <p className="text-sm text-gray-400">
+      <h2 className="text-xl font-semibold">Step 6 â€” MCP Server Connections</h2>
+      <p className="text-sm text-slate-500">
         Configure MCP (Model Context Protocol) servers so Claude Code can securely connect to your cloud environments,
         databases, and orchestration tools at runtime.
       </p>
@@ -930,7 +930,7 @@ function Step6({
       {nonClaudeAgents.length > 0 && (
         <div className="card bg-blue-950/20 border border-blue-700/50">
           <p className="text-sm text-blue-300 font-medium mb-1">MCP compatibility note</p>
-          <p className="text-xs text-gray-300">
+          <p className="text-xs text-slate-600">
             MCP servers are natively supported only by <strong>Claude Code</strong>.
             For <strong>{nonClaudeAgents.map((a) => AGENT_OPTIONS.find((o) => o.value === a)?.label ?? a).join(", ")}</strong>,
             MCP connection details will be included as manual setup notes in their instruction files.
@@ -952,7 +952,7 @@ function Step6({
 
       <div className="space-y-4">
         {c.mcpServers.length === 0 && (
-          <div className="text-gray-500 text-sm italic">No MCP servers configured yet.</div>
+          <div className="text-slate-400 text-sm italic">No MCP servers configured yet.</div>
         )}
         {c.mcpServers.map((srv) => (
           <div key={srv.id} className="card space-y-3">
@@ -1014,10 +1014,10 @@ function Step6({
                 <div key={idx} className="flex gap-2 items-center mb-1">
                   <input className="input w-40 text-xs" placeholder="KEY" value={ev.key}
                     onChange={(e) => updateEnvVar(srv.id, idx, "key", e.target.value)} />
-                  <span className="text-gray-500">=</span>
+                  <span className="text-slate-400">=</span>
                   <input className="input flex-1 text-xs" placeholder="${MY_SECRET}" value={ev.value}
                     onChange={(e) => updateEnvVar(srv.id, idx, "value", e.target.value)} />
-                  <button className="text-xs opacity-60 hover:opacity-100" onClick={() => removeEnvVar(srv.id, idx)}>✕</button>
+                  <button className="text-xs opacity-60 hover:opacity-100" onClick={() => removeEnvVar(srv.id, idx)}>âœ•</button>
                 </div>
               ))}
             </div>
@@ -1029,19 +1029,19 @@ function Step6({
 
       <div className="card bg-amber-950/20 border border-amber-800/40">
         <h3 className="font-semibold text-sm text-amber-400 mb-2">No MCP available? Use Cloud CLI fallback</h3>
-        <p className="text-xs text-gray-400 mb-2">
+        <p className="text-xs text-slate-500 mb-2">
           If MCP servers cannot be configured (no network access, corporate firewall, etc.), Claude Code will
           fall back to cloud CLIs for agentic actions. Ensure the relevant CLI is installed and authenticated:
         </p>
-        <div className="grid grid-cols-2 gap-2 text-xs text-gray-300">
-          <div><code className="text-green-400">gcloud auth application-default login</code> — GCP / BigQuery / Vertex</div>
-          <div><code className="text-green-400">aws configure sso</code> — AWS / Redshift / EMR</div>
-          <div><code className="text-green-400">az login</code> — Azure / Synapse / Fabric</div>
-          <div><code className="text-green-400">databricks configure --token</code> — Databricks Unity Catalog</div>
-          <div><code className="text-green-400">foundry login</code> — Palantir Foundry (palantir-foundry CLI)</div>
-          <div><code className="text-green-400">dbt debug</code> — dbt Cloud / Core connection</div>
+        <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
+          <div><code className="text-green-400">gcloud auth application-default login</code> â€” GCP / BigQuery / Vertex</div>
+          <div><code className="text-green-400">aws configure sso</code> â€” AWS / Redshift / EMR</div>
+          <div><code className="text-green-400">az login</code> â€” Azure / Synapse / Fabric</div>
+          <div><code className="text-green-400">databricks configure --token</code> â€” Databricks Unity Catalog</div>
+          <div><code className="text-green-400">foundry login</code> â€” Palantir Foundry (palantir-foundry CLI)</div>
+          <div><code className="text-green-400">dbt debug</code> â€” dbt Cloud / Core connection</div>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs text-slate-400 mt-2">
           When MCP is configured, Claude Code uses MCP for direct API calls. When not configured, it generates
           CLI commands and runs them via Bash. Both modes are auto-detected from your CLAUDE.md.
         </p>
@@ -1050,7 +1050,7 @@ function Step6({
       <div>
         <label className="label">MCP Configuration Notes</label>
         <textarea className="input min-h-[80px]"
-          placeholder="Auth requirements, network access, VPN dependencies for MCP connections…"
+          placeholder="Auth requirements, network access, VPN dependencies for MCP connectionsâ€¦"
           value={c.mcpNotes} onChange={(e) => setC((p) => ({ ...p, mcpNotes: e.target.value }))} />
       </div>
 
@@ -1079,7 +1079,7 @@ function Step7({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Step 7 — Deployment &amp; Export</h2>
+      <h2 className="text-xl font-semibold">Step 7 â€” Deployment &amp; Export</h2>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -1091,7 +1091,7 @@ function Step7({
         </div>
         <div>
           <label className="label">CI/CD Pipeline
-            <span className="text-gray-500 font-normal ml-2">— generates pipeline config file in ZIP</span>
+            <span className="text-slate-400 font-normal ml-2">â€” generates pipeline config file in ZIP</span>
           </label>
           <select className="input" value={c.cicd}
             onChange={(e) => setC((p) => ({ ...p, cicd: e.target.value }))}>
@@ -1104,7 +1104,7 @@ function Step7({
         <div className="flex items-center justify-between mb-2">
           <label className="label mb-0">Code Repositories
             <span className="text-red-400 ml-1">*</span>
-            <span className="text-gray-500 font-normal ml-2">— GitHub, GitLab, Azure DevOps, Bitbucket</span>
+            <span className="text-slate-400 font-normal ml-2">â€” GitHub, GitLab, Azure DevOps, Bitbucket</span>
           </label>
           <button className="btn-secondary text-xs" onClick={addRepo}>+ Add repo</button>
         </div>
@@ -1117,9 +1117,9 @@ function Step7({
           {(c.repos ?? []).map((repo) => (
             <div key={repo.id} className={`card space-y-2 ${repoError && !repo.url.trim() ? "border-red-600" : ""}`}>
               <div className="flex justify-between items-center">
-                <span className="text-xs font-medium text-gray-400">
+                <span className="text-xs font-medium text-slate-500">
                   {REPO_PROVIDER_OPTIONS.find((o) => o.value === repo.provider)?.label ?? repo.provider}
-                  {repo.name ? ` — ${repo.name}` : ""}
+                  {repo.name ? ` â€” ${repo.name}` : ""}
                 </span>
                 {(c.repos ?? []).length > 1 && (
                   <button className="btn-secondary text-xs" onClick={() => removeRepo(repo.id)}>Remove</button>
@@ -1151,7 +1151,7 @@ function Step7({
                 />
               </div>
               <div>
-                <label className="label text-xs">Alias / Name <span className="text-gray-500 font-normal">(optional)</span></label>
+                <label className="label text-xs">Alias / Name <span className="text-slate-400 font-normal">(optional)</span></label>
                 <input className="input" placeholder="e.g. dbt_gcp, ingestion-pipeline" value={repo.name}
                   onChange={(e) => updateRepo(repo.id, "name", e.target.value)} />
               </div>
@@ -1163,46 +1163,46 @@ function Step7({
       <div>
         <label className="label">Deployment Process Notes</label>
         <textarea className="input min-h-[100px]"
-          placeholder="CI/CD pipeline, deployment steps, environment promotion process, rollback strategy…"
+          placeholder="CI/CD pipeline, deployment steps, environment promotion process, rollback strategyâ€¦"
           value={c.deploymentNotes} onChange={(e) => setC((p) => ({ ...p, deploymentNotes: e.target.value }))} />
       </div>
 
       <div>
         <label className="label">Design Decisions &amp; Constraints</label>
         <textarea className="input min-h-[100px]"
-          placeholder="Key design decisions, trade-offs, constraints the agent should know about…"
+          placeholder="Key design decisions, trade-offs, constraints the agent should know aboutâ€¦"
           value={c.designNotes} onChange={(e) => setC((p) => ({ ...p, designNotes: e.target.value }))} />
       </div>
 
       <div>
         <label className="label">Coding Standards &amp; Conventions</label>
         <textarea className="input min-h-[100px]"
-          placeholder="Naming conventions, review process, branch strategy, commit message format…"
+          placeholder="Naming conventions, review process, branch strategy, commit message formatâ€¦"
           value={c.codeStandardsNotes} onChange={(e) => setC((p) => ({ ...p, codeStandardsNotes: e.target.value }))} />
       </div>
 
       <SectionDocUpload section="deployment" c={c} setC={setC} />
 
-      <div className="card bg-gray-800/50 border border-gray-700">
+      <div className="card">
         <h3 className="font-semibold mb-3">Bundle Summary</h3>
         <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="text-gray-400">Project</div><div>{c.projectName || "—"}</div>
-          <div className="text-gray-400">Agents</div>
+          <div className="text-slate-500">Project</div><div>{c.projectName || "â€”"}</div>
+          <div className="text-slate-500">Agents</div>
           <div>
             {(c.agents ?? []).length > 0
               ? (c.agents ?? []).map((a) => AGENT_OPTIONS.find((o) => o.value === a)?.label ?? a).join(", ")
               : "Claude Code (default)"}
           </div>
-          <div className="text-gray-400">Environments</div><div>{c.environments.map((e) => e.name).join(", ") || "—"}</div>
-          <div className="text-gray-400">Platforms</div><div>{c.platforms.length} platform(s)</div>
-          <div className="text-gray-400">Data Layers</div><div>{c.layers.length} layer(s)</div>
-          <div className="text-gray-400">Sources</div><div>{c.sources.length} source(s) ({c.sources.filter((s) => s.isLegacy).length} legacy)</div>
-          <div className="text-gray-400">Mapping Rows</div><div>{c.mappingRows.length} rows</div>
-          <div className="text-gray-400">MCP Servers</div><div>{c.mcpServers.length} server(s)</div>
-          <div className="text-gray-400">Repositories</div><div>{(c.repos ?? []).filter((r) => r.url).length} repo(s)</div>
-          <div className="text-gray-400">Scheduler</div><div>{c.scheduler || "None"}</div>
-          <div className="text-gray-400">CI/CD</div><div>{CICD_OPTIONS.find((o) => o.value === c.cicd)?.label ?? "None"}</div>
-          <div className="text-gray-400">Attached Docs</div>
+          <div className="text-slate-500">Environments</div><div>{c.environments.map((e) => e.name).join(", ") || "â€”"}</div>
+          <div className="text-slate-500">Platforms</div><div>{c.platforms.length} platform(s)</div>
+          <div className="text-slate-500">Data Layers</div><div>{c.layers.length} layer(s)</div>
+          <div className="text-slate-500">Sources</div><div>{c.sources.length} source(s) ({c.sources.filter((s) => s.isLegacy).length} legacy)</div>
+          <div className="text-slate-500">Mapping Rows</div><div>{c.mappingRows.length} rows</div>
+          <div className="text-slate-500">MCP Servers</div><div>{c.mcpServers.length} server(s)</div>
+          <div className="text-slate-500">Repositories</div><div>{(c.repos ?? []).filter((r) => r.url).length} repo(s)</div>
+          <div className="text-slate-500">Scheduler</div><div>{c.scheduler || "None"}</div>
+          <div className="text-slate-500">CI/CD</div><div>{CICD_OPTIONS.find((o) => o.value === c.cicd)?.label ?? "None"}</div>
+          <div className="text-slate-500">Attached Docs</div>
           <div>
             {c.documents.length} global + {Object.values(c.sectionDocs ?? {}).reduce((a, d) => a + d.length, 0)} section-specific
           </div>
@@ -1216,7 +1216,7 @@ function Step7({
   );
 }
 
-// ─── Step 8 — Launch & Run ────────────────────────────────────────────────────
+// â”€â”€â”€ Step 8 â€” Launch & Run â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const CICD_FILE_MAP: Record<string, string> = {
   "github-actions":      ".github/workflows/ci.yml",
@@ -1253,7 +1253,7 @@ function Step8({ c }: { c: WizardConfig }) {
   const steps: { title: string; desc: string; code?: string }[] = [
     {
       title: "1. Extract the ZIP",
-      desc: `Unzip ${zipName} into a new folder — this becomes your Claude Code workspace root.`,
+      desc: `Unzip ${zipName} into a new folder â€” this becomes your Claude Code workspace root.`,
       code: `# macOS / Linux\nunzip ${zipName} -d ./${c.projectName || "pipeline-agent"}-workspace\n\n# Windows (PowerShell)\nExpand-Archive -Path ${zipName} -DestinationPath .\\${c.projectName || "pipeline-agent"}-workspace`,
     },
     {
@@ -1297,28 +1297,28 @@ function Step8({ c }: { c: WizardConfig }) {
       title: "What's inside your ZIP",
       desc: "Every file your configured agent(s) need is pre-generated:",
       code: [
-        isClaudeCode ? "CLAUDE.md               ← Master instruction file (auto-loaded)" : null,
-        isClaudeCode ? ".claude/settings.json  ← Allowed tools & dialect routing" : null,
-        isClaudeCode ? ".claude/hooks/         ← Pre-bash validator, post-write linter" : null,
-        isClaudeCode ? ".claude/rules/         ← Engine rules, orchestration, context graph" : null,
-        isClaudeCode ? ".claude/rules/doc-references.md     ← Official docs for all platforms & tools" : null,
-        isClaudeCode && (c.repos ?? []).some((r) => r.url) ? ".claude/rules/repo-policy.md ← Mandatory repo clone/commit/push policy" : null,
-        isClaudeCode && hasMcp ? ".claude/mcp_config.json ← MCP server connections" : null,
-        selectedAgents.includes("cursor") ? ".cursor/rules/project-context.mdc  ← Cursor project context (alwaysApply)" : null,
-        selectedAgents.includes("copilot") ? ".github/copilot-instructions.md    ← GitHub Copilot instructions" : null,
-        selectedAgents.includes("windsurf") ? ".windsurfrules                     ← Windsurf rules" : null,
-        selectedAgents.includes("codex") ? "AGENTS.md                          ← OpenAI Codex CLI agents file" : null,
-        selectedAgents.includes("aider") ? "CONVENTIONS.md + .aider.conf.yml   ← Aider conventions & config" : null,
-        selectedAgents.includes("cline") ? ".clinerules                         ← Cline rules" : null,
-        selectedAgents.includes("continue") ? ".continue/config.json              ← Continue.dev configuration" : null,
-        c.cicd && CICD_FILE_MAP[c.cicd] ? `${CICD_FILE_MAP[c.cicd]}  ← ${CICD_OPTIONS.find((o) => o.value === c.cicd)?.label ?? c.cicd} pipeline` : null,
-        "docs/mapping_contract.json  ← Source-to-target column mapping",
-        "docs/architecture_spec.md   ← Architecture reference",
-        "docs/context_graph.json     ← Graph-RAG index",
+        isClaudeCode ? "CLAUDE.md               â† Master instruction file (auto-loaded)" : null,
+        isClaudeCode ? ".claude/settings.json  â† Allowed tools & dialect routing" : null,
+        isClaudeCode ? ".claude/hooks/         â† Pre-bash validator, post-write linter" : null,
+        isClaudeCode ? ".claude/rules/         â† Engine rules, orchestration, context graph" : null,
+        isClaudeCode ? ".claude/rules/doc-references.md     â† Official docs for all platforms & tools" : null,
+        isClaudeCode && (c.repos ?? []).some((r) => r.url) ? ".claude/rules/repo-policy.md â† Mandatory repo clone/commit/push policy" : null,
+        isClaudeCode && hasMcp ? ".claude/mcp_config.json â† MCP server connections" : null,
+        selectedAgents.includes("cursor") ? ".cursor/rules/project-context.mdc  â† Cursor project context (alwaysApply)" : null,
+        selectedAgents.includes("copilot") ? ".github/copilot-instructions.md    â† GitHub Copilot instructions" : null,
+        selectedAgents.includes("windsurf") ? ".windsurfrules                     â† Windsurf rules" : null,
+        selectedAgents.includes("codex") ? "AGENTS.md                          â† OpenAI Codex CLI agents file" : null,
+        selectedAgents.includes("aider") ? "CONVENTIONS.md + .aider.conf.yml   â† Aider conventions & config" : null,
+        selectedAgents.includes("cline") ? ".clinerules                         â† Cline rules" : null,
+        selectedAgents.includes("continue") ? ".continue/config.json              â† Continue.dev configuration" : null,
+        c.cicd && CICD_FILE_MAP[c.cicd] ? `${CICD_FILE_MAP[c.cicd]}  â† ${CICD_OPTIONS.find((o) => o.value === c.cicd)?.label ?? c.cicd} pipeline` : null,
+        "docs/mapping_contract.json  â† Source-to-target column mapping",
+        "docs/architecture_spec.md   â† Architecture reference",
+        "docs/context_graph.json     â† Graph-RAG index",
         c.documents.length > 0 || Object.keys(c.sectionDocs ?? {}).length > 0
-          ? "docs/attachments/ & docs/sections/  ← Your reference documents"
+          ? "docs/attachments/ & docs/sections/  â† Your reference documents"
           : null,
-        `models/                 ← Scaffolded layer directories (${c.layers.map((l) => l.name).join(", ") || "bronze, silver, gold"})`,
+        `models/                 â† Scaffolded layer directories (${c.layers.map((l) => l.name).join(", ") || "bronze, silver, gold"})`,
       ]
         .filter(Boolean)
         .join("\n"),
@@ -1327,18 +1327,18 @@ function Step8({ c }: { c: WizardConfig }) {
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-1">Step 8 — Launch &amp; Run</h2>
-      <p className="text-gray-400 text-sm mb-6">
+      <h2 className="text-xl font-bold mb-1">Step 8 â€” Launch &amp; Run</h2>
+      <p className="text-slate-500 text-sm mb-6">
         Your workspace bundle is ready. Follow these steps to activate it in your AI coding agent.
       </p>
 
       <div className="space-y-5">
         {steps.map((s, i) => (
-          <div key={i} className="border border-gray-700 rounded-lg p-4">
+          <div key={i} className="border border-slate-200 rounded-lg p-4 bg-white">
             <h3 className="font-semibold text-sm mb-1">{s.title}</h3>
-            <p className="text-gray-400 text-xs mb-3">{s.desc}</p>
+            <p className="text-slate-500 text-xs mb-3">{s.desc}</p>
             {s.code && (
-              <pre className="bg-gray-900 rounded p-3 text-xs text-green-400 overflow-x-auto whitespace-pre-wrap leading-relaxed">
+              <pre className="bg-slate-800 rounded p-3 text-xs text-green-400 overflow-x-auto whitespace-pre-wrap leading-relaxed">
                 {s.code}
               </pre>
             )}
@@ -1347,21 +1347,21 @@ function Step8({ c }: { c: WizardConfig }) {
       </div>
 
       {isClaudeCode && (
-        <div className="mt-6 p-4 rounded-lg bg-blue-950 border border-blue-700 text-sm">
-          <p className="font-semibold text-blue-300 mb-1">Pro tip — Context Graph</p>
-          <p className="text-gray-300 text-xs">
+        <div className="mt-6 p-4 rounded-lg bg-blue-50 border border-blue-200 text-sm">
+          <p className="font-semibold text-blue-700 mb-1">Pro tip â€” Context Graph</p>
+          <p className="text-slate-600 text-xs">
             When the full CLAUDE.md is too large for a single prompt, use{" "}
-            <code className="bg-gray-800 px-1 rounded">CONTEXT &lt;query&gt;</code> inside Claude Code to load only the
-            relevant slice. Example: <code className="bg-gray-800 px-1 rounded">CONTEXT silver layer {primaryPlatform}</code>
+            <code className="bg-slate-100 px-1 rounded">CONTEXT &lt;query&gt;</code> inside Claude Code to load only the
+            relevant slice. Example: <code className="bg-slate-100 px-1 rounded">CONTEXT silver layer {primaryPlatform}</code>
           </p>
         </div>
       )}
 
-      <div className="mt-4 p-4 rounded-lg bg-gray-800 border border-gray-600 text-xs text-gray-400">
+      <div className="mt-4 p-4 rounded-lg bg-slate-100 border border-slate-200 text-xs text-slate-500">
         <p>
           {isClaudeCode && (
             <>
-              Need help with Claude Code? Run <code className="bg-gray-900 px-1 rounded">/help</code> inside Claude Code, or visit{" "}
+              Need help with Claude Code? Run <code className="bg-slate-200 px-1 rounded">/help</code> inside Claude Code, or visit{" "}
               <a
                 href="https://docs.anthropic.com/claude-code"
                 target="_blank"
@@ -1380,7 +1380,7 @@ function Step8({ c }: { c: WizardConfig }) {
   );
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function WizardPage() {
   const [step, setStep] = useState(1);
@@ -1427,12 +1427,12 @@ export default function WizardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 p-4 md:p-8">
+    <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-3xl mx-auto">
         <div className="mb-8">
           <h1 className="text-2xl font-bold">Pipeline Coding Agent</h1>
-          <p className="text-gray-400 text-sm mt-1">
-            Multi-Engine, Cloud-Agnostic Data Pipeline Agent Workspace — supports Claude Code, Cursor, Copilot &amp; more
+          <p className="text-slate-500 text-sm mt-1">
+            Multi-Engine, Cloud-Agnostic Data Pipeline Agent Workspace â€” supports Claude Code, Cursor, Copilot &amp; more
           </p>
         </div>
 
@@ -1455,11 +1455,11 @@ export default function WizardPage() {
             disabled={step === 1}
             onClick={() => setStep((s) => Math.max(1, s - 1))}
           >
-            ← Back
+            â† Back
           </button>
           {step < 7 ? (
             <button className="btn-primary" onClick={() => setStep((s) => Math.min(TOTAL_STEPS, s + 1))}>
-              Next →
+              Next â†’
             </button>
           ) : step === 7 ? (
             <button
@@ -1476,7 +1476,7 @@ export default function WizardPage() {
               }}
               disabled={exporting}
             >
-              {exporting ? "Generating…" : "Download & Continue →"}
+              {exporting ? "Generatingâ€¦" : "Download & Continue â†’"}
             </button>
           ) : (
             <button className="btn-primary" onClick={() => { setStep(1); setConfig(emptyConfig); }}>
@@ -1488,3 +1488,4 @@ export default function WizardPage() {
     </div>
   );
 }
+
