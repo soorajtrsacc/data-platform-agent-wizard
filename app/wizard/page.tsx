@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Papa from "papaparse";
 import { compileWorkspace } from "../../lib/compiler";
 import type {
@@ -188,6 +188,156 @@ function detectReposFromText(text: string): Omit<RepoConfig, "id" | "name">[] {
   }
   return results;
 }
+
+// ─── Quick-start Presets ──────────────────────────────────────────────────────
+
+const PRESETS: { id: string; label: string; config: WizardConfig }[] = [
+  {
+    id: "bigquery-dbt",
+    label: "BigQuery + dbt",
+    config: {
+      projectName: "bigquery-dbt-medallion",
+      architectureNotes: "Medallion architecture on GCP BigQuery + dbt Core. Bronze/Silver/Gold layers. GoogleSQL dialect.",
+      environments: [
+        { id: uid(), name: "dev", notes: "" },
+        { id: uid(), name: "staging", notes: "" },
+        { id: uid(), name: "prod", notes: "" },
+      ],
+      platforms: [{ id: uid(), platform: "bigquery", cloud: "gcp", region: "us-central1", role: "primary", notes: "" }],
+      platformNotes: "",
+      layers: [
+        { id: uid(), name: "Bronze", description: "", platformId: "", pathTemplate: "project.bronze" },
+        { id: uid(), name: "Silver", description: "", platformId: "", pathTemplate: "project.silver" },
+        { id: uid(), name: "Gold", description: "", platformId: "", pathTemplate: "project.gold" },
+      ],
+      layerNotes: "",
+      sources: [],
+      sourceNotes: "",
+      mappingRows: [],
+      mappingFileNames: [],
+      mcpServers: [{ id: uid(), name: "bigquery", transport: "stdio", command: "uvx", args: ["mcp-server-bigquery", "--project", "${GCP_PROJECT_ID}"], envVars: [], description: "BigQuery MCP" }],
+      mcpNotes: "",
+      scheduler: "dbt-cloud",
+      cicd: "github-actions",
+      repos: [{ id: uid(), provider: "github", url: "", branch: "main", name: "" }],
+      deploymentNotes: "",
+      designNotes: "",
+      codeStandardsNotes: "",
+      documents: [],
+      sectionDocs: {},
+      agents: ["claude-code"],
+    },
+  },
+  {
+    id: "snowflake-airflow",
+    label: "Snowflake + Airflow",
+    config: {
+      projectName: "snowflake-airflow-pipeline",
+      architectureNotes: "Data warehouse on Snowflake with Apache Airflow orchestration. Staging/Warehouse/Mart layers.",
+      environments: [
+        { id: uid(), name: "dev", notes: "" },
+        { id: uid(), name: "staging", notes: "" },
+        { id: uid(), name: "prod", notes: "" },
+      ],
+      platforms: [{ id: uid(), platform: "snowflake", cloud: "aws", region: "us-east-1", role: "primary", notes: "" }],
+      platformNotes: "",
+      layers: [
+        { id: uid(), name: "Staging", description: "", platformId: "", pathTemplate: "project.staging" },
+        { id: uid(), name: "Warehouse", description: "", platformId: "", pathTemplate: "project.warehouse" },
+        { id: uid(), name: "Mart", description: "", platformId: "", pathTemplate: "project.mart" },
+      ],
+      layerNotes: "",
+      sources: [],
+      sourceNotes: "",
+      mappingRows: [],
+      mappingFileNames: [],
+      mcpServers: [{ id: uid(), name: "snowflake", transport: "stdio", command: "uvx", args: ["mcp-server-snowflake"], envVars: [], description: "Snowflake MCP" }],
+      mcpNotes: "",
+      scheduler: "airflow",
+      cicd: "github-actions",
+      repos: [{ id: uid(), provider: "github", url: "", branch: "main", name: "" }],
+      deploymentNotes: "",
+      designNotes: "",
+      codeStandardsNotes: "",
+      documents: [],
+      sectionDocs: {},
+      agents: ["claude-code"],
+    },
+  },
+  {
+    id: "databricks-uc",
+    label: "Databricks Unity Catalog",
+    config: {
+      projectName: "databricks-unity-lakehouse",
+      architectureNotes: "Lakehouse on Databricks with Unity Catalog. Bronze/Silver/Gold Delta tables. Python + SQL.",
+      environments: [
+        { id: uid(), name: "dev", notes: "" },
+        { id: uid(), name: "staging", notes: "" },
+        { id: uid(), name: "prod", notes: "" },
+      ],
+      platforms: [{ id: uid(), platform: "databricks", cloud: "azure", region: "eastus", role: "primary", notes: "" }],
+      platformNotes: "",
+      layers: [
+        { id: uid(), name: "Bronze", description: "Delta Lake raw ingestion", platformId: "", pathTemplate: "catalog.bronze" },
+        { id: uid(), name: "Silver", description: "Delta Lake cleaned & conformed", platformId: "", pathTemplate: "catalog.silver" },
+        { id: uid(), name: "Gold", description: "Delta Lake aggregated & business-ready", platformId: "", pathTemplate: "catalog.gold" },
+      ],
+      layerNotes: "",
+      sources: [],
+      sourceNotes: "",
+      mappingRows: [],
+      mappingFileNames: [],
+      mcpServers: [{ id: uid(), name: "databricks", transport: "stdio", command: "uvx", args: ["mcp-server-databricks"], envVars: [], description: "Databricks MCP" }],
+      mcpNotes: "",
+      scheduler: "dagster",
+      cicd: "azure-pipelines",
+      repos: [{ id: uid(), provider: "azuredevops", url: "", branch: "main", name: "" }],
+      deploymentNotes: "",
+      designNotes: "",
+      codeStandardsNotes: "",
+      documents: [],
+      sectionDocs: {},
+      agents: ["claude-code"],
+    },
+  },
+  {
+    id: "palantir",
+    label: "Palantir Foundry",
+    config: {
+      projectName: "palantir-foundry-pipeline",
+      architectureNotes: "Data pipelines on Palantir Foundry using Python Transforms and Polars. Ontology-driven architecture.",
+      environments: [
+        { id: uid(), name: "dev", notes: "" },
+        { id: uid(), name: "staging", notes: "" },
+        { id: uid(), name: "prod", notes: "" },
+      ],
+      platforms: [{ id: uid(), platform: "palantir", cloud: "any", region: "hosted", role: "primary", notes: "" }],
+      platformNotes: "",
+      layers: [
+        { id: uid(), name: "Raw", description: "", platformId: "", pathTemplate: "ri.foundry.main.dataset.raw" },
+        { id: uid(), name: "Bronze", description: "", platformId: "", pathTemplate: "ri.foundry.main.dataset.bronze" },
+        { id: uid(), name: "Silver", description: "", platformId: "", pathTemplate: "ri.foundry.main.dataset.silver" },
+        { id: uid(), name: "Gold", description: "", platformId: "", pathTemplate: "ri.foundry.main.dataset.gold" },
+      ],
+      layerNotes: "",
+      sources: [],
+      sourceNotes: "",
+      mappingRows: [],
+      mappingFileNames: [],
+      mcpServers: [{ id: uid(), name: "palantir", transport: "http", url: "${FOUNDRY_BASE_URL}/api/mcp/v1", args: [], envVars: [], description: "Palantir Foundry MCP" }],
+      mcpNotes: "",
+      scheduler: "palantir-schedules",
+      cicd: "github-actions",
+      repos: [{ id: uid(), provider: "github", url: "", branch: "main", name: "" }],
+      deploymentNotes: "",
+      designNotes: "",
+      codeStandardsNotes: "",
+      documents: [],
+      sectionDocs: {},
+      agents: ["claude-code"],
+    },
+  },
+];
 
 function emptyConfig(): WizardConfig {
   return {
@@ -1387,11 +1537,63 @@ export default function WizardPage() {
   const [config, setConfig] = useState<WizardConfig>(emptyConfig);
   const [exporting, setExporting] = useState(false);
   const [repoError, setRepoError] = useState("");
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const configImportRef = useRef<HTMLInputElement>(null);
+
+  // Load saved config from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("pca-wizard-config");
+      if (saved) {
+        const parsed = JSON.parse(saved) as WizardConfig;
+        setConfig((prev) => ({ ...prev, ...parsed }));
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  }, []);
+
+  // Save config to localStorage on every config change (strip base64 docs)
+  useEffect(() => {
+    try {
+      const toSave = { ...config, documents: [], sectionDocs: {} };
+      localStorage.setItem("pca-wizard-config", JSON.stringify(toSave));
+      setSavedAt(new Date().toLocaleTimeString());
+    } catch {
+      // Ignore storage errors
+    }
+  }, [config]);
 
   const setC = useCallback(
     (fn: (p: WizardConfig) => WizardConfig) => setConfig((p) => fn(p)),
     []
   );
+
+  const handleConfigExport = () => {
+    const json = JSON.stringify({ ...config, documents: [], sectionDocs: {} }, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${config.projectName || "wizard-config"}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleConfigImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string) as WizardConfig;
+        setConfig({ ...emptyConfig(), ...parsed });
+        setStep(1);
+      } catch { alert("Invalid config file."); }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
 
   const handleExport = async () => {
     setExporting(true);
@@ -1430,10 +1632,54 @@ export default function WizardPage() {
     <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-3xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold">Pipeline Coding Agent</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-2xl font-bold">Pipeline Coding Agent</h1>
+            {savedAt && (
+              <span className="text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+                Draft saved {savedAt}
+              </span>
+            )}
+          </div>
           <p className="text-slate-500 text-sm mt-1">
             Multi-Engine, Cloud-Agnostic Data Pipeline Agent Workspace — supports Claude Code, Cursor, Copilot &amp; more
           </p>
+
+          {/* Quick-start presets */}
+          <div className="flex flex-wrap items-center gap-2 mt-4 mb-2">
+            <span className="text-xs text-slate-500 font-medium">Quick start:</span>
+            {PRESETS.map((p) => (
+              <button
+                key={p.id}
+                className="text-xs border border-sky-300 bg-sky-50 text-sky-700 rounded-full px-3 py-1 hover:bg-sky-100 transition"
+                onClick={() => { setConfig(p.config); setStep(1); }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Config actions */}
+          <div className="flex flex-wrap gap-2 mt-2">
+            <button className="btn-secondary text-xs px-3 py-1.5" onClick={handleConfigExport}>
+              Export Config
+            </button>
+            <button className="btn-secondary text-xs px-3 py-1.5" onClick={() => configImportRef.current?.click()}>
+              Import Config
+            </button>
+            <button
+              className="btn-secondary text-xs px-3 py-1.5"
+              onClick={() => { setConfig(emptyConfig()); setStep(1); localStorage.removeItem("pca-wizard-config"); setSavedAt(null); }}
+            >
+              Reset
+            </button>
+            <input
+              type="file"
+              accept=".json"
+              ref={configImportRef}
+              className="hidden"
+              onChange={handleConfigImport}
+            />
+          </div>
         </div>
 
         <StepIndicator current={step} />
