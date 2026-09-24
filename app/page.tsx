@@ -37,10 +37,25 @@ export default function Home() {
               ))}
             </div>
           </Link>
+
+          <Link href="/feature" className="card hover:border-green-500 transition-colors group sm:col-span-2">
+            <div className="text-2xl mb-3">✦</div>
+            <h2 className="text-lg font-semibold mb-1 group-hover:text-green-400">Feature of an Existing Pipeline</h2>
+            <p className="text-sm text-gray-400">
+              Add a new feature, model, or data layer to an existing pipeline repo. The agent is given
+              full context of what already exists — so it only builds what is new, on the right branch,
+              without touching existing models.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-1 text-xs">
+              {["Existing Repo", "New Model", "STTM Delta", "Feature Branch", "PR Workflow", "No Overwrite"].map((t) => (
+                <span key={t} className="tag">{t}</span>
+              ))}
+            </div>
+          </Link>
         </div>
 
         <p className="text-center text-xs text-gray-600 mt-10">
-          Both modes generate a downloadable ZIP with CLAUDE.md, engine rules, hooks, and MCP config.
+          All modes generate a downloadable ZIP with CLAUDE.md, engine rules, hooks, and MCP config.
         </p>
       </div>
     </div>

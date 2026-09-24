@@ -5,6 +5,12 @@
       "name": "pipeline-coding-agent",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
+      "port": 3001,
+      "autoPort": false
+    },
+    {
+      "name": "pipeline-coding-agent-preview",
+      "url": "http://localhost:3001",
       "port": 3001
     }
   ]
